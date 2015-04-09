@@ -1,16 +1,38 @@
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <unistd.h>
 #include <termios.h> 
+#include <dirent.h>
+
+
 #include <ctype.h>
 #include <cstring>
 #include <string> 
-#include <dirent.h>
+#include <list>
+
+
 #include <iostream> //for testing 
 using namespace std;
 
+void up_callback)(list<string> list){
+	cout << "\tUP\t"; cout.flush();
+	
+	
+}
+void down_callback(list<string> list){
+		cout << "\down\t"; cout.flush();
 
-
+	
+	
+}
+string build_path(){
+	string path = getcwd(NULL, 0);
+	path += '>';
+	path += '\r';
+	return path;
+	//add 16 character limiter
+}
 void ResetCanonicalMode(int fd, struct termios *savedattributes){
     tcsetattr(fd, TCSANOW, savedattributes);
 }
@@ -42,11 +64,15 @@ int main(int argc, char *argv[]){
 	char RXChar;
 	DIR *dir = NULL;
 	struct dirent *entry = NULL;
-	string path = getcwd(NULL, 0);
-	path += '>';
-	path += '\r';
+	string path = build_path();
+	
+
 	//build_path() makes it to class specs 
 
+	
+	//history
+	list<string> history;
+	
 
 	SetNonCanonicalMode(STDIN_FILENO, &SavedTermAttributes);
 
@@ -58,13 +84,13 @@ int main(int argc, char *argv[]){
         read(STDIN_FILENO, &RXChar, 1);
         if(0x04 == RXChar){ // Ctrl - D 
 	    line += '\0';
-	    write(STDIN_FILENO, &line, sizeof(line));
+	    write(STDIN_FILENO, line.c_str(), line.length());
 	   // cout << line; cout.flush();
             break;
 		}
 		if(0x0A == RXChar){
-			write(STDIN_FILENO, path.c_str(), path.capacity());
-
+			write(STDIN_FILENO, path.c_str(), path.length());
+		
 			
 		}
 		//Check for up and down
@@ -76,15 +102,11 @@ int main(int argc, char *argv[]){
 				read(STDIN_FILENO, &RXChar, 1);
 				//up
 				if(0x41 == RXChar){
-					cout << "Up\t";
-					cout.flush();
-
+					up_callback(history);
 				}
 				//down
 				else if(0x42 == RXChar){
-					cout << "down\t";
-					cout.flush();
-
+					down_callback(history);
 				}
 			}
 		}
