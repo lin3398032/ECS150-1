@@ -4,8 +4,8 @@
 #include <termios.h> 
 #include <ctype.h>
 #include <cstring>
-
-
+#include <string> 
+#include <dirent.h>
 #include <iostream> //for testing 
 using namespace std;
 
@@ -38,19 +38,32 @@ void SetNonCanonicalMode(int fd, struct termios *savedattributes){
 
 
 int main(int argc, char *argv[]){
-    struct termios SavedTermAttributes;
-    char RXChar;
+	struct termios SavedTermAttributes;
+	char RXChar;
+	DIR *dir = NULL;
+	struct dirent *entry = NULL;
+	string path = getcwd(NULL, 0);
+	path += '>';
+	path += '\r';
+	//build_path() makes it to class specs 
+
+
 	SetNonCanonicalMode(STDIN_FILENO, &SavedTermAttributes);
-	char buffer [250];
-	cout << "$PATH > " ; cout.flush();
+
+
+	string line = "";
+	write(STDIN_FILENO, path.c_str(), path.capacity());
     while(1){
 	
         read(STDIN_FILENO, &RXChar, 1);
         if(0x04 == RXChar){ // Ctrl - D 
+	    line += '\0';
+	    write(STDIN_FILENO, &line, sizeof(line));
+	   // cout << line; cout.flush();
             break;
 		}
 		if(0x0A == RXChar){
-			cout << "\r\n$PATH>\r"; cout.flush();
+			write(STDIN_FILENO, path.c_str(), path.capacity());
 
 			
 		}
@@ -81,21 +94,22 @@ int main(int argc, char *argv[]){
             if(isprint(RXChar)){
 		//check for backspace
 				write(STDIN_FILENO, &RXChar, sizeof(RXChar));
+				line += RXChar;
             }
 			else if(0x08 == RXChar || 0x7F == RXChar){
-				cout<< "\b \b";
-				cout.flush();
+				write(STDIN_FILENO, "\b \b", sizeof("\b \b"));
+
 				
 			}
             else{
-                cout << RXChar ;
-				cout.flush();
+		write(STDIN_FILENO, &RXChar, 1);
             }
         }
  	}
     
     ResetCanonicalMode(STDIN_FILENO, &SavedTermAttributes);
 	cout << "\n" << endl;
+	
     return 0;
 }
 
