@@ -15,13 +15,13 @@
 #include <iostream> //for testing 
 using namespace std;
 
-void up_callback)(list<string> list){
+void up_callback(list<string> list){
 	cout << "\tUP\t"; cout.flush();
 	
 	
 }
 void down_callback(list<string> list){
-		cout << "\down\t"; cout.flush();
+		cout << "\tdown\t"; cout.flush();
 
 	
 	
@@ -29,7 +29,7 @@ void down_callback(list<string> list){
 string build_path(){
 	string path = getcwd(NULL, 0);
 	path += '>';
-	path += '\r';
+
 	return path;
 	//add 16 character limiter
 }
@@ -72,26 +72,26 @@ int main(int argc, char *argv[]){
 	
 	//history
 	list<string> history;
-	
+	list<int>::iterator itr;
 
 	SetNonCanonicalMode(STDIN_FILENO, &SavedTermAttributes);
 
 
 	string line = "";
 	write(STDIN_FILENO, path.c_str(), path.capacity());
+
     while(1){
 	
+
         read(STDIN_FILENO, &RXChar, 1);
         if(0x04 == RXChar){ // Ctrl - D 
-	    line += '\0';
-	    write(STDIN_FILENO, line.c_str(), line.length());
-	   // cout << line; cout.flush();
+	    //line += '\0';
+	    //write(STDIN_FILENO, line.c_str(), line.length());
             break;
 		}
 		if(0x0A == RXChar){
+			//enter
 			write(STDIN_FILENO, path.c_str(), path.length());
-		
-			
 		}
 		//Check for up and down
 		//space
@@ -114,17 +114,16 @@ int main(int argc, char *argv[]){
 		//not any of this is then a character 
         else{
             if(isprint(RXChar)){
-		//check for backspace
+				//check for backspace
 				write(STDIN_FILENO, &RXChar, sizeof(RXChar));
 				line += RXChar;
             }
+			//if not printable then it is a backspace
 			else if(0x08 == RXChar || 0x7F == RXChar){
 				write(STDIN_FILENO, "\b \b", sizeof("\b \b"));
-
-				
 			}
             else{
-		write(STDIN_FILENO, &RXChar, 1);
+				write(STDIN_FILENO, &RXChar, 1);
             }
         }
  	}
@@ -137,7 +136,7 @@ int main(int argc, char *argv[]){
 
 
 
-
+//http://www.fantabooks.net/lib/Unix%20Systems%20Programming%20Communication,%20Concurrency,%20and%20Threads%202003/0130424110/ch11lev1sec1.php
 
     	//read char out and also write to file? If enter is pressed look if it actually records something?
 		//http://www.csee.umbc.edu/portal/help/theory/ascii.txt
