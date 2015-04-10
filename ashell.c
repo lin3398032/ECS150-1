@@ -9,25 +9,44 @@
 #include <ctype.h>
 #include <cstring>
 #include <string> 
-#include <list>
+#include <vector>
 
 
 #include <iostream> //for testing 
 using namespace std;
+void execute_cmd(){
 
-void up_callback(list<string> list){
-	cout << "\tUP\t"; cout.flush();
+
+}
+//void history_util(){ //loop through data structure and print out the vector}
+void up_callback(vector<string> vec, vector<string>::iterator itr){
+//increment only when up is pressed and it is not empty or will seg fault
+	if(vec.empty()){
+		write(STDIN_FILENO, "\a", sizeof("\a") );
+	//move back to prompt? Should already be at prompt
+	}
+	else if(++itr == vec.end())
+	{
+		cout << "\a";cout.flush();
+	} else {
+	
+		itr++;
+		write(STDIN_FILENO, itr->c_str(), itr->length());
+
+	}
 	
 	
 }
-void down_callback(list<string> list){
+void down_callback(vector<string> vec,  vector<string>::iterator itr){
 		cout << "\tdown\t"; cout.flush();
 
 	
 	
 }
 string build_path(){
-	string path = getcwd(NULL, 0);
+	string path = ""; 
+	path += '\n'; 
+	path += getcwd(NULL, 0);
 	path += '>';
 
 	return path;
@@ -66,50 +85,57 @@ int main(int argc, char *argv[]){
 	struct dirent *entry = NULL;
 	string path = build_path();
 	
-
 	//build_path() makes it to class specs 
 
 	
 	//history
-	list<string> history;
-	list<int>::iterator itr;
+	vector<string> history;
+	vector<string>::iterator itr;
+
 
 	SetNonCanonicalMode(STDIN_FILENO, &SavedTermAttributes);
 
 
 	string line = "";
-	write(STDIN_FILENO, path.c_str(), path.capacity());
-
+	write(STDIN_FILENO, path.c_str(), path.length());
     while(1){
-	
 
+	//reads character
         read(STDIN_FILENO, &RXChar, 1);
         if(0x04 == RXChar){ // Ctrl - D 
-	    //line += '\0';
+	 line += '\0';
 	    //write(STDIN_FILENO, line.c_str(), line.length());
             break;
-		}
-		if(0x0A == RXChar){
-			//enter
-			write(STDIN_FILENO, path.c_str(), path.length());
-		}
-		//Check for up and down
-		//space
-		if(0x1B == RXChar){
-			//left bracket
+	}
+	else if(0x0A == RXChar){
+		//enter
+
+		line += '\0';
+		history.push_back(line);
+		itr = history.begin();
+		//add command to history vector
+		//run commands 
+	
+
+		write(STDIN_FILENO, path.c_str(), path.length());
+	}
+	//Check for up and down
+	//space
+	else if(0x1B == RXChar){
+		//left bracket
+		read(STDIN_FILENO, &RXChar, 1);
+		if(0x5B == RXChar){
 			read(STDIN_FILENO, &RXChar, 1);
-			if(0x5B == RXChar){
-				read(STDIN_FILENO, &RXChar, 1);
-				//up
-				if(0x41 == RXChar){
-					up_callback(history);
-				}
-				//down
-				else if(0x42 == RXChar){
-					down_callback(history);
-				}
+			//up
+			if(0x41 == RXChar){
+				up_callback(history, itr);
+			}
+			//down
+			else if(0x42 == RXChar){
+				down_callback(history, itr);
 			}
 		}
+	}
 
 		//not any of this is then a character 
         else{
@@ -129,7 +155,7 @@ int main(int argc, char *argv[]){
  	}
     
     ResetCanonicalMode(STDIN_FILENO, &SavedTermAttributes);
-	cout << "\n" << endl;
+	//cout << "\n" << endl;
 	
     return 0;
 }
