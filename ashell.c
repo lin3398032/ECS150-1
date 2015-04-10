@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sstream>
 
 #include <unistd.h>
 #include <termios.h> 
@@ -10,30 +11,48 @@
 #include <cstring>
 #include <string> 
 #include <list>
-
+#include <iterator>
 
 #include <iostream> //for testing 
 using namespace std;
-void execute_cmd(){
+/*
+string* parse_cmds(string line, string* lptable)
+{
+	stringstream ss(line);
+	string s;
+	string *cmds;
+	int counter = 0;
+	while (getline(ss, s, ' ')) {
+ 	 	cmds[counter] = s;
+		counter++;
+	}
+	return cmds;
+}
 
+void execute_cmds(string line, string *lptable)
+{
+	string cmds = parse_cmds(line, lptable);
+	 
 
 }
+*/
 //void history_util(){ //loop through data structure and print out the list}
-void up_callback(list<string> vec, list<string>::iterator itr){
+void up_callback(list<string> vec, list<string>::iterator itr)
+{
 //increment only when up is pressed and it is not empty or will seg fault
 	if(vec.empty()){
 		write(STDIN_FILENO, "\a", sizeof("\a") );
 	//move back to prompt? Should already be at prompt
 	}
-	else if(itr == vec.end())
+	else if(itr == vec.end() || itr == vec.begin())
 	{
-		cout << "\a";cout.flush();
+		write(STDIN_FILENO, "\a", sizeof("\a"));
 	} else {
-	
-		write(STDIN_FILENO, itr->c_str(), itr->length());
 
+		write(STDIN_FILENO, itr->c_str(), itr->length());
+		--itr;
 	}
-	
+
 	
 }
 void down_callback(list<string> vec,  list<string>::iterator itr){
@@ -48,6 +67,7 @@ string build_path(){
 	path += getcwd(NULL, 0);
 	path += '>';
 	path += ' ';
+	path += '\t';
 	return path;
 	//add 16 character limiter
 }
@@ -82,6 +102,9 @@ int main(int argc, char *argv[]){
 	char RXChar;
 	DIR *dir = NULL;
 	struct dirent *entry = NULL;
+	string line = "";
+	//string lookUp [2] = {"exit", "ls"};
+
 	string path = build_path();
 	
 	//build_path() makes it to class specs 
@@ -89,13 +112,13 @@ int main(int argc, char *argv[]){
 	
 	//history
 	list<string> history;
-	list<string>::iterator itr;
+	list<string>::iterator itr = history.begin();
 
 
 	SetNonCanonicalMode(STDIN_FILENO, &SavedTermAttributes);
 
 
-	string line = "";
+
 	write(STDIN_FILENO, path.c_str(), path.length());
     while(1){
 
@@ -108,12 +131,14 @@ int main(int argc, char *argv[]){
 	}
 	else if(0x0A == RXChar){
 		//enter
-
 		line += '\0';
-		history.push_front(line);
 		//add command to history list
-		//run commands 
+		history.insert(itr++, line);
+		//run commands
+		//execute_cmds(line, lookUp); 
+		//clean up
 		line = "";
+		itr = history.begin();
 		write(STDIN_FILENO, path.c_str(), path.length());
 	}
 	//Check for up and down
@@ -158,7 +183,7 @@ int main(int argc, char *argv[]){
 }
 
 
-
+//http://www.cs.cornell.edu/Courses/cs414/2004su/homework/shell/shell.html
 //http://www.fantabooks.net/lib/Unix%20Systems%20Programming%20Communication,%20Concurrency,%20and%20Threads%202003/0130424110/ch11lev1sec1.php
 
     	//read char out and also write to file? If enter is pressed look if it actually records something?
