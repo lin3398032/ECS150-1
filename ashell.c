@@ -9,7 +9,7 @@
 #include <ctype.h>
 #include <cstring>
 #include <string> 
-#include <vector>
+#include <list>
 
 
 #include <iostream> //for testing 
@@ -18,26 +18,25 @@ void execute_cmd(){
 
 
 }
-//void history_util(){ //loop through data structure and print out the vector}
-void up_callback(vector<string> vec, vector<string>::iterator itr){
+//void history_util(){ //loop through data structure and print out the list}
+void up_callback(list<string> vec, list<string>::iterator itr){
 //increment only when up is pressed and it is not empty or will seg fault
 	if(vec.empty()){
 		write(STDIN_FILENO, "\a", sizeof("\a") );
 	//move back to prompt? Should already be at prompt
 	}
-	else if(++itr == vec.end())
+	else if(itr == vec.end())
 	{
 		cout << "\a";cout.flush();
 	} else {
 	
-		itr++;
 		write(STDIN_FILENO, itr->c_str(), itr->length());
 
 	}
 	
 	
 }
-void down_callback(vector<string> vec,  vector<string>::iterator itr){
+void down_callback(list<string> vec,  list<string>::iterator itr){
 		cout << "\tdown\t"; cout.flush();
 
 	
@@ -48,7 +47,7 @@ string build_path(){
 	path += '\n'; 
 	path += getcwd(NULL, 0);
 	path += '>';
-
+	path += ' ';
 	return path;
 	//add 16 character limiter
 }
@@ -89,8 +88,8 @@ int main(int argc, char *argv[]){
 
 	
 	//history
-	vector<string> history;
-	vector<string>::iterator itr;
+	list<string> history;
+	list<string>::iterator itr;
 
 
 	SetNonCanonicalMode(STDIN_FILENO, &SavedTermAttributes);
@@ -111,12 +110,10 @@ int main(int argc, char *argv[]){
 		//enter
 
 		line += '\0';
-		history.push_back(line);
-		itr = history.begin();
-		//add command to history vector
+		history.push_front(line);
+		//add command to history list
 		//run commands 
-	
-
+		line = "";
 		write(STDIN_FILENO, path.c_str(), path.length());
 	}
 	//Check for up and down
