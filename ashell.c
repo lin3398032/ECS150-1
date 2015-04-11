@@ -45,18 +45,33 @@ void execute_cmds(string line)
     vector<string>::iterator citr;
     vector<string>::iterator itr = lookUp.begin();
     cmds = parse_cmds(line);
- /*  
-    for(itr = cmds.begin(); citr != cmds.end(); citr++){
-		cout << "\n" <<*citr << endl; cout.flush();
-     }
-*citr == *itr
-*/
+
 	//parse through the commands that were entered 
+	//as of right now we don't need a look up table!
 	for(citr = cmds.begin(); citr != cmds.end(); citr++){ //it goes through everything that's entered
 		for(itr = lookUp.begin(); itr != lookUp.end(); itr++){ //goes through the lookup table
-			if((*citr).compare(*itr) != 0){// C++ string vs C string
-				cout << "hello world " << endl;
-				cout << *itr << endl;
+			if(strcmp((*citr).c_str(), "exit") == 0 ){// C++ string vs C string
+				exit(0); 
+			}
+
+			else if(strcmp((*citr).c_str(), "history") == 0){
+				cout << "HISTORY" << endl;				
+			}
+			
+			else if(strcmp((*citr).c_str(), "cd") == 0){
+				cout << "CD" << endl;
+			}
+
+			else if(strcmp((*citr).c_str(), "pwd") == 0){
+				cout << "pwd" << endl;
+			}
+			
+			else if(strcmp((*citr).c_str(), "ls") == 0) {
+				cout << "ls" << endl;
+			}
+			
+			else{
+				cout << "command invalid" << endl;
 			}
 		}	
 	}
