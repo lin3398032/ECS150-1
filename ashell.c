@@ -37,26 +37,50 @@ void execute_cmds(string line, string *lptable)
 }
 */
 //void history_util(){ //loop through data structure and print out the list}
-void up_callback(list<string> vec, list<string>::iterator itr)
+void up_callback(list<string> &vec, list<string>::iterator &itr, string &line)
 {
+	
 //increment only when up is pressed and it is not empty or will seg fault
 	if(vec.empty()){
 		write(STDIN_FILENO, "\a", sizeof("\a") );
 	//move back to prompt? Should already be at prompt
 	}
-	else if(itr == vec.end() || itr == vec.begin())
+	else if(itr == vec.end())
 	{
 		write(STDIN_FILENO, "\a", sizeof("\a"));
 	} else {
+		for(unsigned int i = 0; i < line.length(); i++)
+		{ //erase whatever is on the screen
+			write(STDIN_FILENO, "\b \b", sizeof("\b \b"));
 
+		}
+		line.erase(line.begin(),line.end());
+		line = *itr;
 		write(STDIN_FILENO, itr->c_str(), itr->length());
-		--itr;
+		itr++;
 	}
 
 	
 }
-void down_callback(list<string> vec,  list<string>::iterator itr){
-		cout << "\tdown\t"; cout.flush();
+void down_callback(list<string> vec,  list<string>::iterator itr, string &line){
+	if(vec.empty()){
+		write(STDIN_FILENO, "\a", sizeof("\a") );
+	//move back to prompt? Should already be at prompt
+	}
+	else if(itr == vec.end())
+	{
+		write(STDIN_FILENO, "\a", sizeof("\a"));
+	} else {
+		for(unsigned int i = 0; i < line.length(); i++)
+		{ //erase whatever is on the screen
+			write(STDIN_FILENO, "\b \b", sizeof("\b \b"));
+
+		}
+		line.erase(line.begin(),line.end());
+		line = *itr;
+		write(STDIN_FILENO, itr->c_str(), itr->length());
+		itr--;
+	}
 
 	
 	
@@ -150,11 +174,11 @@ int main(int argc, char *argv[]){
 			read(STDIN_FILENO, &RXChar, 1);
 			//up
 			if(0x41 == RXChar){
-				up_callback(history, itr);
+				up_callback(history, itr, line );
 			}
 			//down
 			else if(0x42 == RXChar){
-				down_callback(history, itr);
+				down_callback(history, itr, line);
 			}
 		}
 	}
