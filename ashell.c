@@ -40,7 +40,7 @@ void execute_cmds(string line)
 
     vector<string> lookUp;
     lookUp.push_back("exit");
-    lookUp.push_back("history");	
+    lookUp.push_back("history");
     vector<string> cmds;
     vector<string>::iterator citr;
     vector<string>::iterator itr = lookUp.begin();
@@ -49,23 +49,17 @@ void execute_cmds(string line)
     for(itr = cmds.begin(); citr != cmds.end(); citr++){
 		cout << "\n" <<*citr << endl; cout.flush();
      }
+*citr == *itr
 */
-
-	for(citr = cmds.begin(); citr != cmds.end(); citr++){
-			cout << " looking " << endl;
-		for(itr = lookUp.begin(); itr != lookUp.end(); itr++){
-			if(*citr == *itr){
+	//parse through the commands that were entered 
+	for(citr = cmds.begin(); citr != cmds.end(); citr++){ //it goes through everything that's entered
+		for(itr = lookUp.begin(); itr != lookUp.end(); itr++){ //goes through the lookup table
+			if((*citr).compare(*itr) != 0){// C++ string vs C string
+				cout << "hello world " << endl;
 				cout << *itr << endl;
-			} else {
-				cout << " citr:  " <<  *citr << endl;
 			}
-
-		}
-			
-		
+		}	
 	}
-
-
 }
 
 //void history_util(){ //loop through data structure and print out the list}
