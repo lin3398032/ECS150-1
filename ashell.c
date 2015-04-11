@@ -11,29 +11,61 @@
 #include <cstring>
 #include <string>
 #include <list>
+#include <vector>
 #include <iterator>
 
 #include <iostream> //for testing
 using namespace std;
 
-string* parse_cmds(string line, string &lptable)
+
+
+
+vector<string> parse_cmds(string line)
 {
     stringstream ss(line);
     string s;
-    string *cmds;
-    int counter = 0;
-    while (getline(ss, s, ' ')) {
-        cmds[counter] = s;
-        counter++;
+    vector<string> cmds;
+   // vector<string>::iterator citr;
+
+    while (std::getline(ss, s, ' ')) {
+//	cout << "\ncmd: " <<  s << endl;
+	cmds.push_back(s);
+
     }
     return cmds;
 }
 
-void execute_cmds(string line, string &lptable)
+void execute_cmds(string line)
 {
-    string *cmds = parse_cmds(line, lptable);
-    
-    
+
+    vector<string> lookUp;
+    lookUp.push_back("exit");
+    lookUp.push_back("history");	
+    vector<string> cmds;
+    vector<string>::iterator citr;
+    vector<string>::iterator itr = lookUp.begin();
+    cmds = parse_cmds(line);
+ /*  
+    for(itr = cmds.begin(); citr != cmds.end(); citr++){
+		cout << "\n" <<*citr << endl; cout.flush();
+     }
+*/
+
+	for(citr = cmds.begin(); citr != cmds.end(); citr++){
+			cout << " looking " << endl;
+		for(itr = lookUp.begin(); itr != lookUp.end(); itr++){
+			if(*citr == *itr){
+				cout << *itr << endl;
+			} else {
+				cout << " citr:  " <<  *citr << endl;
+			}
+
+		}
+			
+		
+	}
+
+
 }
 
 //void history_util(){ //loop through data structure and print out the list}
@@ -71,6 +103,7 @@ void down_callback(list<string> &vec,  list<string>::iterator &itr, string &line
     {
         write(STDIN_FILENO, "\a", sizeof("\a"));
     } else {
+	cout << line.length();
         for(unsigned int i = 0; i < line.length(); i++)
         { //erase whatever is on the screen
             write(STDIN_FILENO, "\b \b", sizeof("\b \b"));
@@ -122,13 +155,15 @@ void SetNonCanonicalMode(int fd, struct termios *savedattributes){
 }
 
 
-int main(int argc, char *argv[]){
+
+int main(void){
     struct termios SavedTermAttributes;
     char RXChar;
     DIR *dir = NULL;
     struct dirent *entry = NULL;
     string line = "";
-    //string lookUp [2] = {"exit", "ls"};
+
+
     int charOnLine = 0;
     string path = build_path();
     
@@ -161,7 +196,7 @@ int main(int argc, char *argv[]){
             //add command to history list
             history.insert(itr++, line);
             //run commands
-            //execute_cmds(line, lookUp);
+            execute_cmds(line);
             //clean up
             line = "";
             itr = history.begin();
@@ -197,14 +232,17 @@ int main(int argc, char *argv[]){
             else if(0x08 == RXChar || 0x7F == RXChar){
 		if(charOnLine){
                 	write(STDIN_FILENO, "\b \b", sizeof("\b \b"));
+			// dumps when there is no line need an if statement 
+			// if line is empty() 
+               		line.erase(line.size() - 1);
 			charOnLine--;
 		}
 		else
-        write(STDIN_FILENO, "\a", sizeof("\a"));
+  		      write(STDIN_FILENO, "\a", sizeof("\a"));
             }
-            else{
+           /* else{
                 write(STDIN_FILENO, &RXChar, 1);
-            }
+            }*/
         }
     }
     
