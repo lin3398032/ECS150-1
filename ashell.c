@@ -16,7 +16,7 @@
 #include <iostream> //for testing
 using namespace std;
 
-string* parse_cmds(string line)
+string* parse_cmds(string line, string &lptable)
 {
     stringstream ss(line);
     string s;
@@ -29,9 +29,9 @@ string* parse_cmds(string line)
     return cmds;
 }
 
-void execute_cmds(string line, string *lptable)
+void execute_cmds(string line, string &lptable)
 {
-    string cmds = parse_cmds(line, lptable);
+    string *cmds = parse_cmds(line, lptable);
     
     
 }
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]){
     struct dirent *entry = NULL;
     string line = "";
     //string lookUp [2] = {"exit", "ls"};
-    
+    int charOnLine = 0;
     string path = build_path();
     
     //build_path() makes it to class specs
@@ -149,6 +149,7 @@ int main(int argc, char *argv[]){
         
         //reads character
         read(STDIN_FILENO, &RXChar, 1);
+
         if(0x04 == RXChar){ // Ctrl - D
             line += '\0';
             //write(STDIN_FILENO, line.c_str(), line.length());
@@ -190,10 +191,16 @@ int main(int argc, char *argv[]){
                 //check for backspace
                 write(STDIN_FILENO, &RXChar, sizeof(RXChar));
                 line += RXChar;
+		charOnLine++;
             }
             //if not printable then it is a backspace
             else if(0x08 == RXChar || 0x7F == RXChar){
-                write(STDIN_FILENO, "\b \b", sizeof("\b \b"));
+		if(charOnLine){
+                	write(STDIN_FILENO, "\b \b", sizeof("\b \b"));
+			charOnLine--;
+		}
+		else
+        write(STDIN_FILENO, "\a", sizeof("\a"));
             }
             else{
                 write(STDIN_FILENO, &RXChar, 1);
