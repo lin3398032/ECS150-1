@@ -18,6 +18,22 @@
 #include <iostream> //for testing
 using namespace std;
 
+
+
+int cdFunction(string **line){ //what we might need to do is need a vector of strings <line>
+	if(line[1] == NULL){
+		cout << "Error" << endl;
+	}
+	
+	else {
+		if(chdir(line[1]) != 0) { //want zero 
+			cout << "error" << endl; //if zero this gets skipped	
+		}	
+	}
+	
+	return 1; 
+}
+
 void ls_cmd(){
     struct dirent *dir;
     DIR *p;
@@ -33,9 +49,8 @@ void ls_cmd(){
         
     }
     closedir (p);
-
-
 }
+
 void history(list<string> cmds)
 {
     list<string>::iterator itr; 
@@ -54,15 +69,15 @@ vector<string> parse_cmds(string line)
     stringstream ss(line);
     string s;
     vector<string> cmds;
-   // vector<string>::iterator citr;
 
     while (std::getline(ss, s, ' ')) {
-//	cout << "\ncmd: " <<  s << endl;
 	cmds.push_back(s);
 
     }
     return cmds;
 }
+
+
 
 void execute_cmds(string line,list<string> oldCmds)
 {
@@ -83,12 +98,12 @@ void execute_cmds(string line,list<string> oldCmds)
 	for(citr = cmds.begin(); citr != cmds.end(); citr++){ //it goes through everything that's entered
 		for(itr = lookUp.begin(); itr != lookUp.end(); itr++){ //goes through the lookup table
 			if(strcmp((*citr).c_str(), "exit") == 0 ){// C++ string vs C string
-				exit(0); 
+				break; 
 			}
 
 			else if(strcmp((*citr).c_str(), "history") == 0){
 				//history(oldCmds);	
-                break;			
+               			 break;			
 			}
 			
 			else if(strcmp((*citr).c_str(), "cd") == 0){
