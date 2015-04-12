@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sstream>
+#include <sys/stat.h>
 
 #include <unistd.h>
 #include <termios.h>
 #include <dirent.h>
 #include <sys/types.h>
 
-
+#include <fcntl.h>
 #include <ctype.h>
 #include <cstring>
 #include <string>
@@ -21,7 +22,7 @@ using namespace std;
 void ls_cmd(){
     struct dirent *dir;
     DIR *p;
-
+    struct stat statbuf;
     p = opendir (".");
     if (p == NULL) {
      printf ("Cannot open directory");
@@ -29,7 +30,11 @@ void ls_cmd(){
     }
 
     while ((dir = readdir(p)) != NULL) {
-    write(STDIN_FILENO, p->d_name,  p->d_name.strlen());
+
+	if (stat(dir->d_name, &statbuf) == -1)
+      		  continue;
+	cout << statbuf.st_mode << endl;
+   	 write(STDIN_FILENO, p->d_name,  p->d_name.strlen());
         
     }
     closedir (p);
