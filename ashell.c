@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <termios.h>
 #include <dirent.h>
+#include <sys/types.h>
 
 
 #include <ctype.h>
@@ -17,8 +18,36 @@
 #include <iostream> //for testing
 using namespace std;
 
+void ls_cmd(){
+    struct dirent *dir;
+    DIR *p;
+
+    p = opendir (".");
+    if (p == NULL) {
+     printf ("Cannot open directory");
+     return 1;
+    }
+
+    while ((dir = readdir(p)) != NULL) {
+    write(STDIN_FILENO, p->d_name,  p->d_name.strlen());
+        
+    }
+    closedir (p);
 
 
+}
+void history(list<string> cmds)
+{
+    list<string>::iterator itr; 
+    int i = 0;
+    for(itr=cmds.begin(); itr != cmds.end(); itr++)
+    {   
+        write(STDIN_FILENO, &i, sizeof(i));
+        write(STDIN_FILENO, itr->c_str(), itr->length());
+        i++;
+    }
+
+}
 
 vector<string> parse_cmds(string line)
 {
@@ -35,7 +64,7 @@ vector<string> parse_cmds(string line)
     return cmds;
 }
 
-void execute_cmds(string line)
+void execute_cmds(string line,list<string> oldCmds)
 {
 
     vector<string> lookUp;
@@ -58,7 +87,8 @@ void execute_cmds(string line)
 			}
 
 			else if(strcmp((*citr).c_str(), "history") == 0){
-				cout << "HISTORY" << endl;				
+				//history(oldCmds);	
+                break;			
 			}
 			
 			else if(strcmp((*citr).c_str(), "cd") == 0){
@@ -208,7 +238,7 @@ int main(void){
             //add command to history list
             history.insert(itr++, line);
             //run commands
-            execute_cmds(line);
+            execute_cmds(line, history);
             //clean up
             line = "";
             itr = history.begin();
