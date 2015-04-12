@@ -41,6 +41,9 @@ void execute_cmds(string line)
     vector<string> lookUp;
     lookUp.push_back("exit");
     lookUp.push_back("history");
+    lookUp.push_back("cd");
+    lookUp.push_back("pwd");
+    lookUp.push_back("ls"); 
     vector<string> cmds;
     vector<string>::iterator citr;
     vector<string>::iterator itr = lookUp.begin();
