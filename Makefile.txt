@@ -1,5 +1,5 @@
-ashell.out: ashell.c 
-	g++ -ansi -Wall -o ashell.out ashell.c
+shared.out: shared.c 
+	g++ -ansi -Wall -o shared.out shared.c -lrt
 
 clean:
-	rm -f ashell.out
+	rm -f shared.out
