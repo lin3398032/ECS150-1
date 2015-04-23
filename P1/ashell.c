@@ -21,7 +21,7 @@ using namespace std;
 
 
 
-int cdFunction(string **line){ //what we might need to do is need a vector of strings <line>
+/*int cdFunction(string ){ //what we might need to do is need a vector of strings <line>
 	if(line[1] == NULL){
 		cout << "Error" << endl;
 	}
@@ -33,9 +33,9 @@ int cdFunction(string **line){ //what we might need to do is need a vector of st
 	}
 	
 	return 1; 
-}
+}*/
 
-void ls_cmd(){
+/*void ls_cmd(){
     struct dirent *dir;
     DIR *p;
     struct stat statbuf;
@@ -54,7 +54,7 @@ void ls_cmd(){
         
     }
     closedir (p);
-}
+}*/
 
 void history(list<string> cmds)
 {
@@ -182,14 +182,26 @@ void down_callback(list<string> &vec,  list<string>::iterator &itr, string &line
     
 }
 string build_path(){
+    int slash;
+    string temp = "";
+    string temp2 = "";
     string path = "";
+    string Finalpath = "";
     path += '\n';
     path += getcwd(NULL, 0);
     path += '>';
     path += ' ';
     path += '\t';
-    return path;
-    //add 16 character limiter
+	// this is the 16 byte requirement !!!
+    if(path.size() > 16)
+    {
+	slash = path.find_last_of('/');
+        temp = "/...";
+        string temp2 = path.substr(slash, path.size());
+        Finalpath = temp + temp2;
+
+     } 	
+    return Finalpath;
 }
 void ResetCanonicalMode(int fd, struct termios *savedattributes){
     tcsetattr(fd, TCSANOW, savedattributes);

@@ -8,6 +8,8 @@
 #include <sys/stat.h> 
 #include <sys/wait.h>
 # include <sys/mman.h>
+#include <sys/file.h> 
+
 #include <cstring> 
 
 #include <string> 
@@ -30,26 +32,30 @@ int main(int argc, char *argv[]){
 		exit(0);
 	}
 	
-	void ptr* = mmap(0, region_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	if(ptr = MAP_FAILED){
-		perror(mmap);
+	int c = ftruncate(i, region_size);
+	if(c != 0){
+	
+		perror("ftruncate");
+		exit(0);
+		
+	}
+	void *ptr = mmap(0, region_size, PROT_READ | PROT_WRITE, MAP_SHARED, i, 0);
+	if(ptr == MAP_FAILED){
+		perror("mmap");
 		close(i);
 		exit(0);
 	}
 	
 	pid_t pid = fork();
 	if(pid == 0){ // child
-		u_long *d  = (u_long *) ptr;
-	
-		
-		*d = 0Xdveebee;
+		strcpy( (char *)ptr, "hello from your child!\n\n");
 		exit(0);
 	}
 	if(pid > 0){ //parent
 	
 		int status;
-		waitpid(pid, &status);
-		printf("child wrote %#lx\n", *(u_long *) ptr);
+		waitpid(pid, &status, 0);
+		printf("%s", (char*)ptr);
 	
 	}
 	
