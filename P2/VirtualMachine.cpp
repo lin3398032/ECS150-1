@@ -22,7 +22,8 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 {
 	TVMMainEntry vmmain; //creates a function pointer
 	vmmain = VMLoadModule(argv[0]); //set function pointer to point to this function
-	if(vmmain != NULL)//check if vmmain is pointing to the address of VMLoadModule 
+	cout << "application: " << argv[0] << endl;
+	if(vmmain == NULL)//check if vmmain is pointing to the address of VMLoadModule 
 		cerr << "is not null!" << endl;
 	else
 		vmmain(argc, argv);//run the function it points to, in a way it derefences it
@@ -34,19 +35,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 
 
 TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
-	int w = write(filedescriptor, data, *length);
-	if(w < 0) //error handling
-		return(VM_STATUS_FAILURE);
-	else
-		return(VM_STATUS_SUCCESS);
+	write(filedescriptor, data, *length);
+	return(VM_STATUS_SUCCESS);
 }
 
-
-TVMStatus VMThreadSleep(TVMTick tick){
-	
-		
-
-		return(VM_STATUS_SUCCESS);
-	
-	
-}

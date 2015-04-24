@@ -4,7 +4,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-//TVMStatus "codes" just return this 
+
 #define VM_STATUS_FAILURE                       ((TVMStatus)0x00)
 #define VM_STATUS_SUCCESS                       ((TVMStatus)0x01)
 #define VM_STATUS_ERROR_INVALID_PARAMETER       ((TVMStatus)0x02)
@@ -55,7 +55,7 @@ TVMStatus VMMutexQuery(TVMMutexID mutex, TVMThreadIDRef ownerref);
 TVMStatus VMMutexAcquire(TVMMutexID mutex, TVMTick timeout);     
 TVMStatus VMMutexRelease(TVMMutexID mutex);
 
-#define VMPrint(format, ...)        VMFilePrint ( 1,  format, ##__VA_ARGS__) //just states to call VMFilePrint when it encouters the VMPrint function
+#define VMPrint(format, ...)        VMFilePrint ( 1,  format, ##__VA_ARGS__)
 #define VMPrintError(format, ...)   VMFilePrint ( 2,  format, ##__VA_ARGS__)
 
 TVMStatus VMFileOpen(const char *filename, int flags, int mode, int *filedescriptor);
