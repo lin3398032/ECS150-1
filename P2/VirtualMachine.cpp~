@@ -1,54 +1,56 @@
 #include "VirtualMachine.h"
 #include "Machine.h"
-#include <unistd.h>
-#include <signal.h>
-#include <time.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <poll.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <stdarg.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <vector>
-#include <map>
+#include <stdlib.h>
+#include <dlfcn.h>
+
+//for testing 
+#include <iostream> 
+#include <cstdlib> 
+using namespace std;
+//VirtualMachineUtils.c functions made to work in C++
+extern "C"{
+	TVMMainEntry VMLoadModule(const char *module);
+	TVMStatus VMFilePrint(int filedescriptor, const char *format, ...);
+	void MachineInitialize(int timeout);
+	void MachineRequestAlarm(useconds_t usec, TMachineAlarmCallback callback, void *calldata);
+}
+TVMStatus alarmCallback(TVMTick tick);
+/*
+*	Get VMStart to work, use MainEntry function pointer to load a module and then call it 
+*/
+TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
+{
+	MachineInitialize(machinetickms);
+	MachineRequestAlarm(machinetickms, alarmCallback, NULL); //arguments? and alarmCallback being called?	
 
 
-extern C {
+	TVMMainEntry vmmain; //creates a function pointer
+	vmmain = VMLoadModule(argv[0]); //set function pointer to point to this function
+	cout << "application: " << argv[0] << endl;
+	if(vmmain == NULL)//check if vmmain is pointing to the address of VMLoadModule 
+		cerr << "is not null!" << endl;
+	else
+		vmmain(argc, argv);//run the function it points to, in a way it derefences it
 
-
-
-
-TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[]){
-
-
-	TVMMain vmMain;
-	vmMain = VMLoadModule(argv[0]);
+  	return(VM_STATUS_SUCCESS);
 
 }
+
+TVMStatus alarmCallback(TVMTick tick)
+{
+	tick = tick*100;
+	cout << "in alarm callback"  << endl; 
+	while(tick != -0)
+		tick--;
+	return(VM_STATUS_SUCCESS);
+
+}
+
 
 TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
-
-	write(0, *data, *length);
-
+	write(filedescriptor, data, *length);
+	return(VM_STATUS_SUCCESS);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-}
