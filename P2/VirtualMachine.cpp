@@ -13,13 +13,21 @@ using namespace std;
 extern "C"{
 	TVMMainEntry VMLoadModule(const char *module);
 	TVMStatus VMFilePrint(int filedescriptor, const char *format, ...);
+	TVMStatus VMThreadSleep(TVMTick tick);
+	void MachineInitialize(int timeout);
+	void MachineRequestAlarm(useconds_t usec, TMachineAlarmCallback callback, void *calldata);
 }
-
+int volatile tick;
+void AlarmCallback(void *params);
 /*
 *	Get VMStart to work, use MainEntry function pointer to load a module and then call it 
 */
 TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 {
+	MachineInitialize(machinetickms);
+	MachineRequestAlarm(machinetickms*1000, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
+
+
 	TVMMainEntry vmmain; //creates a function pointer
 	vmmain = VMLoadModule(argv[0]); //set function pointer to point to this function
 	cout << "application: " << argv[0] << endl;
@@ -32,6 +40,16 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 
 }
 
+void AlarmCallback(void *param){
+	tick = tick*100;
+	//while(tick != 0)
+	//printf("inside AlarmCallback");
+
+}
+TVMStatus VMThreadSleep(TVMTick tick){
+	cout << "in thread sleep"  << endl; 
+	return(VM_STATUS_SUCCESS);
+}
 
 
 TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
