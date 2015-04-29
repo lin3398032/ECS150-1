@@ -16,16 +16,18 @@ extern "C"{
 	TVMStatus VMThreadSleep(TVMTick tick);
 	void MachineInitialize(int timeout);
 	void MachineRequestAlarm(useconds_t usec, TMachineAlarmCallback callback, void *calldata);
+	void MachineEnableSignals(void);
+
 }
-int volatile tick;
+int volatile gtick;
 void AlarmCallback(void *params);
-/*
-*	Get VMStart to work, use MainEntry function pointer to load a module and then call it 
-*/
+
 TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 {
+
 	MachineInitialize(machinetickms);
-	MachineRequestAlarm(machinetickms*1000, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
+	MachineRequestAlarm(machinetickms, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
+	MachineEnableSignals();
 
 
 	TVMMainEntry vmmain; //creates a function pointer
@@ -41,13 +43,16 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 }
 
 void AlarmCallback(void *param){
-	tick = tick*100;
-	//while(tick != 0)
-	//printf("inside AlarmCallback");
+	if(gtick > 0)
+		gtick--;
 
 }
 TVMStatus VMThreadSleep(TVMTick tick){
-	cout << "in thread sleep"  << endl; 
+	gtick = tick*1000;
+	while(gtick > 0){
+
+
+	}
 	return(VM_STATUS_SUCCESS);
 }
 
