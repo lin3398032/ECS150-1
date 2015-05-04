@@ -1,9 +1,17 @@
 #include "VirtualMachine.h"
 #include "Machine.h"
-#include <iostream>
 #include <unistd.h>
 #include <vector>
 #include <string>
+
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ipc.h> 
+#include <sys/shm.h> 
+#include <sys/stat.h> 
+#include <sys/wait.h>
+# include <sys/mman.h>
+#include <sys/file.h> 
 using namespace std;
 
 class ThreadControlBlock {
@@ -47,14 +55,12 @@ extern "C" {
 	TVMStatus VMThreadSleep(TVMTick tick);
 	void entryThread(void* param);	
 	void idleThreadFun(void* calldata);
-	void dequeueThread(TVMThreadID argThreadID);
-	void enqueueThread(TVMThreadID argThreadID);
+	void dequeueThread(TVMThreadID id);
+	void enqueueThread(TVMThreadID id);
 	void call_back(void* calldata);
-	void schelduleThread(void);
+	void scheduleThread(void);
 }
 TVMStatus VMStart(int tickms, int machinetickms, int argc,char *argv[]) {
-	
-
 	
 	ThreadControlBlock primary_Thread; //initialized thread
 	primary_Thread.threadID = totalThreads.size(); //
@@ -70,7 +76,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc,char *argv[]) {
 
 	//set up for function pointer
 	idle_Thread.threadEntryPos = &idleThreadFun; 
-	idle_Thread.threadMemory = 64000; //allocate memory
+	idle_Thread.threadMemory = 70000;//allocate memory
 	
 	//seet priority 
 	idle_Thread.threadPriority = VM_THREAD_PRIORITY_LOW;
@@ -123,7 +129,7 @@ TVMStatus VMThreadSleep(TVMTick tick) {
 	if(tick == VM_TIMEOUT_IMMEDIATE) {
 		totalThreads[runningThreadID].threadState = VM_THREAD_STATE_READY; //put running thread into the read state
 		enqueueThread(runningThreadID); //queue it
-		schelduleThread(); //call schelduler
+		scheduleThread(); //call schelduler
 		MachineResumeSignals(&old_state);
 		return VM_STATUS_SUCCESS;
 	}	
@@ -134,7 +140,7 @@ TVMStatus VMThreadSleep(TVMTick tick) {
 	totalThreads[runningThreadID].ticksThreads = tick; 
 	sleepThreads.push_back(runningThreadID); //  into the sleeping threads
 
-	schelduleThread();
+	scheduleThread();
 	MachineResumeSignals(&old_state);
 	return VM_STATUS_SUCCESS;	
 }
@@ -151,7 +157,7 @@ void call_back(void* data) {
 			totalThreads[(*itr)].threadState = VM_THREAD_STATE_READY;
 			enqueueThread(*itr);			
 			totalThreads[runningThreadID].threadState = VM_THREAD_STATE_READY;
-			schelduleThread();
+			scheduleThread();
 			return;
 		}
 	}
@@ -218,8 +224,12 @@ void entryThread(void* param) {
 	VMThreadTerminate(runningThreadID);
 	return;
 }
-	
-TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsize, TVMThreadPriority prio, TVMThreadIDRef tid) {
+
+void create_thread_block(){
+}
+
+
+TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize size, TVMThreadPriority priority, TVMThreadIDRef tid) {
 	if(!entry || !tid)
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	
@@ -227,11 +237,11 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	TMachineSignalState old_state;
 	MachineSuspendSignals(&old_state);
 	//intialize the thread
-	ThreadControlBlock new_t;
+	ThreadControlBlock new_t();
 	new_t.threadID = totalThreads.size();
-	new_t.threadPriority = prio;
+	new_t.threadPriority = priority;
 	new_t.threadState = VM_THREAD_STATE_DEAD;
-	new_t.threadMemory = memsize;
+	new_t.threadMemory = size;
 	new_t.PtrforStack = new uint8_t[memsize];
 	new_t.threadEntryPos = entry;
 	new_t.parameterThread = param;
@@ -272,7 +282,7 @@ TVMStatus VMThreadActivate(TVMThreadID id) {
 	if(itr->threadPriority > totalThreads[runningThreadID].threadPriority) {
 		totalThreads[runningThreadID].threadPriority = VM_THREAD_STATE_READY;
 		enqueueThread(totalThreads[runningThreadID].threadID);
-		schelduleThread();
+		scheduleThread();
 	}
 	
 	MachineResumeSignals(&old_state);
@@ -280,15 +290,15 @@ TVMStatus VMThreadActivate(TVMThreadID id) {
 	return VM_STATUS_SUCCESS;
 }
 
-TVMStatus VMThreadID(TVMThreadIDRef ref) {
+TVMStatus VMThreadID(TVMThreadIDRef reference) {
 
-	if(!ref)
+	if(!reference)
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	
 	vector<ThreadControlBlock>::iterator itr;
 	for(itr = totalThreads.begin(); itr != totalThreads.end(); ++itr) {
 		if(itr->threadID == runningThreadID) {
-			*ref = runningThreadID;
+			*reference = runningThreadID;
 			return VM_STATUS_SUCCESS;
 		}
 	}
@@ -327,27 +337,27 @@ TVMStatus VMThreadTerminate(TVMThreadID thread) {
 
 	itr->threadState = VM_THREAD_STATE_DEAD;
 	dequeueThread(itr->threadID);
-	schelduleThread();
+	scheduleThread();
 	
 	return VM_STATUS_SUCCESS;
 }
 
-void dequeueThread(TVMThreadID argThreadID) {
+void dequeueThread(TVMThreadID id) {
 
 	vector<TVMThreadID>::iterator itr;
 	int found = 0;
 	
 	for(itr = sleepThreads.begin(); itr != sleepThreads.end(); ++itr) {
-		if(*itr == argThreadID)
+		if(*itr == id)
 			break;			
 	}
 	sleepThreads.erase(itr);
 	
-	TVMThreadPriority priority = totalThreads[argThreadID].threadPriority;	
+	TVMThreadPriority priority = totalThreads[id].threadPriority;	
 	
 	if(priority == VM_THREAD_PRIORITY_HIGH) {
 		for(itr = hpThreads.begin(); itr != hpThreads.end(); ++itr) {
-			if(*itr == argThreadID) {
+			if(*itr == id) {
 				found = 1;
 				break;		
 			}				
@@ -357,7 +367,7 @@ void dequeueThread(TVMThreadID argThreadID) {
 	}
 	else if (priority == VM_THREAD_PRIORITY_NORMAL){
 		for(itr = npThreads.begin(); itr != npThreads.end(); ++itr) {
-			if(*itr == argThreadID) {
+			if(*itr == id) {
 				found = 1;
 				break;			
 			}
@@ -367,7 +377,7 @@ void dequeueThread(TVMThreadID argThreadID) {
 	}
 	else if (priority == VM_THREAD_PRIORITY_LOW) {
 		for(itr = lpThreads.begin(); itr != lpThreads.end(); ++itr) {
-			if(*itr == argThreadID) {
+			if(*itr == id) {
 				found = 1;				
 				break;
 			}
@@ -385,38 +395,125 @@ void idleThreadFun(void* calldata) {
 	return;
 }
 
-void enqueueThread(TVMThreadID argThreadID){
+void enqueueThread(TVMThreadID id){
 
 
-	if (totalThreads[argThreadID].threadPriority == VM_THREAD_PRIORITY_HIGH) 
-		hpThreads.push_back(argThreadID);
-	else if (totalThreads[argThreadID].threadPriority == VM_THREAD_PRIORITY_NORMAL) 
-		npThreads.push_back(argThreadID);
-	else if(totalThreads[argThreadID].threadPriority == VM_THREAD_PRIORITY_LOW) 
-		lpThreads.push_back(argThreadID);
+	if (totalThreads[id].threadPriority == VM_THREAD_PRIORITY_HIGH) 
+		hpThreads.push_back(id);
+	else if (totalThreads[id].threadPriority == VM_THREAD_PRIORITY_NORMAL) 
+		npThreads.push_back(id);
+	else if(totalThreads[id].threadPriority == VM_THREAD_PRIORITY_LOW) 
+		lpThreads.push_back(id);
 	else 
 	   return;
 	
 	
 	string p;
-	if(totalThreads[argThreadID].threadPriority == 3)
+	if(totalThreads[id].threadPriority == 3)
 		p = "HIGH";
-	else if(totalThreads[argThreadID].threadPriority == 2)
+	else if(totalThreads[id].threadPriority == 2)
 		p = "NORMAL";
-	else if(totalThreads[argThreadID].threadPriority == 1)
+	else if(totalThreads[id].threadPriority == 1)
 		p = "LOW";
 	else
 		p = "ERROR";
 	return;
 }
 TVMStatus VMMutexCreate(TVMMutexIDRef mutexref){
-	//
+	//check if reference to resource exsists in resources
+	//if not create new mutex wi
 	Mutex new_m;
-	
-
+	int semaphore = shm_open( new_m, O_CREAT | O_EXCL | O_RDWR , S_IRUSR | S_IWUSR );
+	const size_t region_size = sysconf(_SC_PAGE_SIZE); //set to system's page size 
 	return VM_STATUS_SUCCESS;
 }
 
+/*
+	//semaphore
+typedef struct {
+	int value;
+	char** list;
+} Semaphore;
+
+void wait(Semaphore *s){
+		s->value--;
+		while(s->value < 0){
+			//add process to wait list 
+			//block the process
+			
+		}
 	
+	
+}
+
+
+int main(int argc, char *argv[]){
+
+
+	Semaphore S;
+	const size_t region_size = sysconf(_SC_PAGE_SIZE); //set to system's page size 
+	string str = "Kyle";
+	const char *name = str.c_str();	
+	str = "sema";
+	const char *sema = str.c_str();	
+	int s = shm_open( sema, O_CREAT | O_EXCL | O_RDWR , S_IRUSR | S_IWUSR );
+
+	int i = shm_open( name, O_CREAT | O_EXCL | O_RDWR , S_IRUSR | S_IWUSR );
+	if(i < 0){
+		
+		cerr << i << " shared memory failed\n" << endl;
+		exit(0);
+	}
+	
+	int c = ftruncate(i, region_size);
+	if(c != 0){
+	
+		perror("ftruncate");
+		exit(0);
+		
+	}
+	void *ptr = mmap(0, region_size, PROT_READ | PROT_WRITE, MAP_SHARED, i, 0);
+	if(ptr == MAP_FAILED){
+		perror("mmap");
+		close(i);
+		exit(0);
+	}
+	
+	pid_t pid = fork();
+	if(pid == 0){ // child
+		strcpy( (char *)ptr, "hello from your child!\n\n");
+		exit(0);
+	}
+	if(pid > 0){ //parent
+	
+		int status;
+		waitpid(pid, &status, 0);
+		printf("%s", (char*)ptr);
+	
+	}
+	
+	int r = munmap(ptr, region_size);
+	if(r != 0){
+		perror("munmap");
+		exit(0);
+	}
+	
+	
+	r = shm_unlink(name);
+	if(r != 0){
+		perror("shm_unlink");
+		exit(0);
+	}
+		
+
+	
+	
+	
+	
+	return(0);
+}
+
+
+*/
 
 
