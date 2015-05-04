@@ -24,7 +24,7 @@ extern "C" {
 	const int timeout = 100000;
 	TVMThreadID runningThreadID;
 	TVMThreadID idleThreadID;
-	volatile int global_tick;
+	volatile int gtick;
 	
 	vector<ThreadControlBlock> totalThreads; //vector that holds all of the threads
 	vector<TVMThreadID>	lpThreads; //vector that holds low priority threads
@@ -66,7 +66,7 @@ extern "C" {
 	idle_Thread.PtrforStack = new uint8_t[idle_Thread.threadMemory];	
 	
 	// This creates the context for idle_Thread
-	MachineContextCreate(&(idle_Thread.infoThread), &entryThread, 0, idle_Thread.PtrforStack, idle_Thread.threadMemory);
+	MachineContextCreate(&(idle_Thread.infoThread), *entryThread, 0, idle_Thread.PtrforStack, idle_Thread.threadMemory);
 	
 	totalThreads.push_back(idle_Thread);		
 	idleThreadID = idle_Thread.threadID;
