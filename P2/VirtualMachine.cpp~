@@ -92,7 +92,7 @@ TVMStatus VMFileWrite(int fd, void *data, int *length) {
 	if (!data || !length)
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	
-	int ret = write(filedescriptor, data, *length);
+	int ret = write(fd, data, *length);
 		
 	if(ret > 0)
 		return VM_STATUS_SUCCESS;
@@ -253,7 +253,7 @@ TVMStatus VMThreadActivate(TVMThreadID id) {
 
 	TMachineSignalState old_state;
 	MachineSuspendSignals(&old_state);
-	MachineContextCreate(&(tri->infoThread), &entryThread, itr->parameterThread, itr->PtrforStack, itr->threadMemory);
+	MachineContextCreate(&(itr->infoThread), &entryThread, itr->parameterThread, itr->PtrforStack, itr->threadMemory);
 	itr->threadState = VM_THREAD_STATE_READY;
 	threadsOnEnqueue(itr->threadID);
 	
@@ -313,8 +313,8 @@ TVMStatus VMThreadTerminate(TVMThreadID thread) {
 		return VM_STATUS_ERROR_INVALID_STATE;
 	
 
-	i->threadState = VM_THREAD_STATE_DEAD;
-	threadsDequeue(i->threadID);
+	itr->threadState = VM_THREAD_STATE_DEAD;
+	threadsDequeue(itr->threadID);
 	scheduler();
 	
 	return VM_STATUS_SUCCESS;
@@ -356,7 +356,7 @@ void threadsDequeue(TVMThreadID argThreadID) {
 			npThreads.erase(itr);		
 	}
 	else if (priority == VM_THREAD_PRIORITY_LOW) {
-		for(i = lpThreads.begin(); itr != lpThreads.end(); ++itr) {
+		for(itr = lpThreads.begin(); itr != lpThreads.end(); ++itr) {
 			if(*itr == argThreadID) {
 				found = 1;				
 				break;
@@ -403,7 +403,7 @@ void threadsOnEnqueue(TVMThreadID argThreadID){
 		p = "error";
 
 	return;
-	}
+}
 	
 	
 }
