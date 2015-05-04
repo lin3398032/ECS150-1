@@ -19,6 +19,17 @@ class ThreadControlBlock {
 		void* parameterThread;
 };
 
+
+typedef struct Mutex{
+	
+	bool lock; //the mutex lock
+	TVMMutexID mid;
+	vector<TVMTheradIDRef> waitku; //the waitku, uses pointers to the blocks
+	
+};
+
+
+
 extern "C" {
 	class ThreadControlBlock;
 	const int timeout = 100000;
@@ -36,11 +47,11 @@ extern "C" {
 	TVMStatus VMThreadSleep(TVMTick tick);
 	void entryThread(void* param);	
 	void idleThreadFun(void* calldata);
-	void threadsDequeue(TVMThreadID argThreadID);
-	void threadsOnEnqueue(TVMThreadID argThreadID);
+	void dequeueThread(TVMThreadID argThreadID);
+	void enqueueThread(TVMThreadID argThreadID);
 	void call_back(void* calldata);
-	void scheduler(void);
-
+	void schelduleThread(void);
+}
 TVMStatus VMStart(int tickms, int machinetickms, int argc,char *argv[]) {
 	
 
@@ -111,8 +122,8 @@ TVMStatus VMThreadSleep(TVMTick tick) {
 	//timeout is immediate then then put back into ready and queue it
 	if(tick == VM_TIMEOUT_IMMEDIATE) {
 		totalThreads[runningThreadID].threadState = VM_THREAD_STATE_READY; //put running thread into the read state
-		threadsOnEnqueue(runningThreadID); //queue it
-		scheduler(); //call schelduler
+		enqueueThread(runningThreadID); //queue it
+		schelduleThread(); //call schelduler
 		MachineResumeSignals(&old_state);
 		return VM_STATUS_SUCCESS;
 	}	
@@ -123,7 +134,7 @@ TVMStatus VMThreadSleep(TVMTick tick) {
 	totalThreads[runningThreadID].ticksThreads = tick; 
 	sleepThreads.push_back(runningThreadID); //  into the sleeping threads
 
-	scheduler();
+	schelduleThread();
 	MachineResumeSignals(&old_state);
 	return VM_STATUS_SUCCESS;	
 }
@@ -138,18 +149,31 @@ void call_back(void* data) {
 		if(totalThreads[(*itr)].ticksThreads == 0) {
 
 			totalThreads[(*itr)].threadState = VM_THREAD_STATE_READY;
-			threadsOnEnqueue(*itr);			
+			enqueueThread(*itr);			
 			totalThreads[runningThreadID].threadState = VM_THREAD_STATE_READY;
-			scheduler();
+			schelduleThread();
 			return;
 		}
 	}
 }
 
-void scheduler() {
+void scheduleThread() {
 	TMachineSignalState old_state;
 	MachineSuspendSignals(&old_state);
-	if(!hpThreads.empty()) {
+	if (!lpThreads.empty()) {
+		if(runningThreadID == lpThreads.front()) {
+ 			MachineResumeSignals(&old_state);
+			return;
+		}
+		
+		TVMThreadID temp = runningThreadID;
+		runningThreadID = lpThreads.front();
+		lpThreads.erase(lpThreads.begin());	
+		MachineResumeSignals(&old_state);
+		MachineContextSwitch(&totalThreads[temp].infoThread, &totalThreads[runningThreadID].infoThread);
+	}
+	
+	else if(!hpThreads.empty()) {
 		//check if its currently running
 		if(runningThreadID == hpThreads.front()) {
 			MachineResumeSignals(&old_state);
@@ -176,19 +200,7 @@ void scheduler() {
 		MachineResumeSignals(&old_state);
 		MachineContextSwitch(&totalThreads[temp].infoThread, &totalThreads[runningThreadID].infoThread);
 	}
-	
-	else if (!lpThreads.empty()) {
-		if(runningThreadID == lpThreads.front()) {
- 			MachineResumeSignals(&old_state);
-			return;
-		}
-		
-		TVMThreadID temp = runningThreadID;
-		runningThreadID = lpThreads.front();
-		lpThreads.erase(lpThreads.begin());	
-		MachineResumeSignals(&old_state);
-		MachineContextSwitch(&totalThreads[temp].infoThread, &totalThreads[runningThreadID].infoThread);
-	}
+
 	//if all empty
 	else {
 		TVMThreadID temp = runningThreadID;
@@ -255,12 +267,12 @@ TVMStatus VMThreadActivate(TVMThreadID id) {
 	MachineSuspendSignals(&old_state);
 	MachineContextCreate(&(itr->infoThread), &entryThread, itr->parameterThread, itr->PtrforStack, itr->threadMemory);
 	itr->threadState = VM_THREAD_STATE_READY;
-	threadsOnEnqueue(itr->threadID);
+	enqueueThread(itr->threadID);
 	
 	if(itr->threadPriority > totalThreads[runningThreadID].threadPriority) {
 		totalThreads[runningThreadID].threadPriority = VM_THREAD_STATE_READY;
-		threadsOnEnqueue(totalThreads[runningThreadID].threadID);
-		scheduler();
+		enqueueThread(totalThreads[runningThreadID].threadID);
+		schelduleThread();
 	}
 	
 	MachineResumeSignals(&old_state);
@@ -314,25 +326,23 @@ TVMStatus VMThreadTerminate(TVMThreadID thread) {
 	
 
 	itr->threadState = VM_THREAD_STATE_DEAD;
-	threadsDequeue(itr->threadID);
-	scheduler();
+	dequeueThread(itr->threadID);
+	schelduleThread();
 	
 	return VM_STATUS_SUCCESS;
 }
 
-void threadsDequeue(TVMThreadID argThreadID) {
+void dequeueThread(TVMThreadID argThreadID) {
 
 	vector<TVMThreadID>::iterator itr;
 	int found = 0;
 	
-	// 1. Deal with sleepThreads.	
 	for(itr = sleepThreads.begin(); itr != sleepThreads.end(); ++itr) {
 		if(*itr == argThreadID)
 			break;			
 	}
 	sleepThreads.erase(itr);
 	
-	// 2. Deal with priority queues	
 	TVMThreadPriority priority = totalThreads[argThreadID].threadPriority;	
 	
 	if(priority == VM_THREAD_PRIORITY_HIGH) {
@@ -365,46 +375,48 @@ void threadsDequeue(TVMThreadID argThreadID) {
 		if(found)
 			lpThreads.erase(itr);
 	}
-	else {
-		cout << "Terminate Error: Invalid Priority" << endl;
-	}	
 	return;
 }
 
 void idleThreadFun(void* calldata) {
-	while(true){
+	while(true){ 
+	//nothing 
 	}
 	return;
 }
 
-void threadsOnEnqueue(TVMThreadID argThreadID){
+void enqueueThread(TVMThreadID argThreadID){
 
-	TVMThreadPriority priority = totalThreads[argThreadID].threadPriority;
-	
-	if(priority == VM_THREAD_PRIORITY_LOW) 
-		lpThreads.push_back(argThreadID);
-	else if (priority == VM_THREAD_PRIORITY_NORMAL) 
-		npThreads.push_back(argThreadID);
-	else if (priority == VM_THREAD_PRIORITY_HIGH) 
+
+	if (totalThreads[argThreadID].threadPriority == VM_THREAD_PRIORITY_HIGH) 
 		hpThreads.push_back(argThreadID);
-	else {
-		cout << "Error: Invalid thread priority in threadsOnEnqueue()." << endl;
-		return;
-	}
+	else if (totalThreads[argThreadID].threadPriority == VM_THREAD_PRIORITY_NORMAL) 
+		npThreads.push_back(argThreadID);
+	else if(totalThreads[argThreadID].threadPriority == VM_THREAD_PRIORITY_LOW) 
+		lpThreads.push_back(argThreadID);
+	else 
+	   return;
+	
 	
 	string p;
-	if(priority == 1)
-		p = "low";
-	else if (priority == 2)
-		p = "normal";
-	else if (priority == 3)
-		p = "high";
+	if(totalThreads[argThreadID].threadPriority == 3)
+		p = "HIGH";
+	else if(totalThreads[argThreadID].threadPriority == 2)
+		p = "NORMAL";
+	else if(totalThreads[argThreadID].threadPriority == 1)
+		p = "LOW";
 	else
-		p = "error";
-
+		p = "ERROR";
 	return;
 }
+TVMStatus VMMutexCreate(TVMMutexIDRef mutexref){
+	//
+	Mutex new_m;
 	
-	
+
+	return VM_STATUS_SUCCESS;
 }
+
+	
+
 
