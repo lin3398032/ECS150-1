@@ -30,6 +30,8 @@ class tcb{
 
 tcb primary;
 tcb idle;
+vector<*tcb> all;
+
 int volatile gtick;
 
 
@@ -45,9 +47,8 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 
 	TVMMainEntry vmmain; //creates a function pointer
 	vmmain = VMLoadModule(argv[0]); //set function pointer to point to this function
-	cout << "application: " << argv[0] << endl;
 	if(vmmain == NULL)//check if vmmain is pointing to the address of VMLoadModule 
-		cerr << "is not null!" << endl;
+		cerr << "is  null!" << endl;
 	else
 		vmmain(argc, argv);//run the function it points to, in a way it derefences it
 
