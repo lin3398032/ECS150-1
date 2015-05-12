@@ -19,7 +19,20 @@ extern "C"{
 	void MachineEnableSignals(void);
 
 }
+class tcb{
+	public: 
+	TVMThreadPriority priority; 
+	TVMThreadID id; 
+	TVMThreadState state;	
+	TVMTick ticks;
+	
+};
+
+tcb primary;
+tcb idle;
 int volatile gtick;
+
+
 void AlarmCallback(void *params);
 
 TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
