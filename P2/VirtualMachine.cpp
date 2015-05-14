@@ -111,7 +111,18 @@ void Ready(TVMThreadID thread){
 
 } //pushes into a queue based on priority
 
-TVMStatus VMTerminate(TVMThreadID thread){  return(VM_STATUS_SUCCESS);}
+TVMStatus VMTerminate(TVMThreadID thread)
+{  
+	all[thread]->state = VM_THREAD_STATE_DEAD;
+	//check through the ready queues 
+	vector<tcb*>::iterator itr; 
+	for(itr = high.begin(); itr != high.end(); itr++){
+		if((*itr)->id == thread)
+			high.remove((*itr));
+	}
+	
+	return(VM_STATUS_SUCCESS);
+}
 
 void Skeleton(void* params){
 	params = all[current]->params;
