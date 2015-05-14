@@ -62,7 +62,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	primary.priority = VM_THREAD_PRIORITY_NORMAL;
 	primary.state = VM_THREAD_STATE_RUNNING;
 	all.push_back(&primary);
-	//*current = primary;		
+	*current = primary;		
 //primary thread doesnt need a context 	
 	tcb idle; 
 	idle.id = all.size();		
@@ -156,7 +156,6 @@ TVMStatus VMThreadState(TVMThreadID thread, TVMThreadStateRef stateref)
 
 void wrapper(void* param){
 	MachineEnableSignals();
-
 
 
 }
