@@ -120,7 +120,7 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	thread.priority = prio;
 	thread.state = VM_THREAD_STATE_DEAD;
 	thread.base = new uint8_t[thread.memsize];
-	
+		
 
 		
 	return VM_STATUS_SUCCESS;
@@ -137,5 +137,15 @@ TVMStatus VMThreadActivate(TVMThreadID thread){
 
 }
 
+TVMStatus VMThreadState(TVMThreadID thread, TVMThreadStateRef stateref)
+{	
 
+	vector<tcb*>::iterator itr; 	
+	for(itr = all.begin(); itr != all.end(); itr++){
+		if((*itr)->id == thread)
+			*stateref = all[thread]->state;
+	}
+
+	return(VM_STATUS_SUCCESS);
+}
 
