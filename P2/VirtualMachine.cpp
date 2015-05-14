@@ -29,20 +29,19 @@ class tcb{
 	uint8_t base; // stack pointer base 
 	TVMMemorySize memsize;
 	TVMMutexID mid;
-	TVMThreadEntry entry; //entry function need to make a skeleton wrapper for it 
+	TVMThreadEntry entry; //entry function need to make a skeleton wrapper for it
+	SMachineContext context; 
 	
 };
-tcb *current; // ptr to the current thread
-tcb primary; //thread priority is normal 
-tcb idle;
-vector<*tcb> all;
+tcb *current; // ptr to the current thread 
+vector<tcb*> all;
 //multiple ready queues one for each priority, thread state declares what goes first 
 //goes into the ready queue when thread is activated
-list<*tcb> high;
-list<*tcb> normal;
-list<*tcb> low;
+list<tcb*> high;
+list<tcb*> normal;
+list<tcb*> low;
 //sleeping thread queue
-list<*tcb> sleep;
+list<tcb*> sleeping;
 //mutex thread queue
 
 
@@ -57,8 +56,19 @@ void scheduler(void);
 TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 {
 	
-
-
+	tcb primary;
+	primary.id = all.size(); 
+	primary.priority = VM_THREAD_PRIORITY_NORMAL;
+	primary.state = VM_THREAD_STATE_RUNNING;		
+//primary thread doesnt need a context 	
+	tcb idle; 
+i	idle.id = all.size();		
+	idle.priority = VM_THREAD_PRIORITY_LOW;
+	idle.state = VM_THREAD_STATE_READY;
+	idle.memsize = 6400;
+        idle.base = new unit8_t[idle.memsize];	
+        MachineContextCreate(&(idle.context), *(idle.thread), idle.base, idle.memsize  ); 		
+//					
 	MachineInitialize(machinetickms);
 	MachineRequestAlarm(machinetickms, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
 	MachineEnableSignals();
@@ -67,7 +77,8 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	TVMMainEntry vmmain; //creates a function pointer
 	vmmain = VMLoadModule(argv[0]); //set function pointer to point to this function
 	if(vmmain == NULL)//check if vmmain is pointing to the address of VMLoadModule 
-		cerr << "is  null!" << endl;
+	
+ 		cout<< "is  null!" << endl;
 	else
 		vmmain(argc, argv);//run the function it points to, in a way it derefences it
 
