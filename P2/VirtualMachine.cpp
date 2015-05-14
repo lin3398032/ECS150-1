@@ -108,12 +108,16 @@ void Ready(TVMThreadID thread){
 	} 
 	return;
 
+
 } //pushes into a queue based on priority
+
+TVMStatus VMTerminate(TVMThreadID thread){  return(VM_STATUS_SUCCESS);}
+
 void Skeleton(void* params){
 	params = all[current]->params;
 	MachineEnableSignals(); 
 	all[current]->entry(params);
-	VMTerminate(all[current]);
+	VMTerminate(all[current]->id);
 	
 }  
 void AlarmCallback(void *param){
@@ -124,7 +128,7 @@ void AlarmCallback(void *param){
 			(*itr)->ticks--;
 		else { 
 			(*itr)->state = VM_THREAD_STATE_READY;
-			//queue and then scheldule
+			Ready((*itr)->id); //put into a ready queue
 		}
 		
 	}
@@ -169,7 +173,7 @@ TVMStatus VMThreadActivate(TVMThreadID thread){
 	//MachineCreateContext(&(all[current], )
         MachineContextCreate(&(all[current]->context), *(all[current]->entry), NULL, all[current]->base, all[current]->memsize); 		
 	all[thread]->state = VM_THREAD_STATE_READY;	
-//put into a ready queue? 
+	Ready(all[thread]->id);//put into a ready queue 
 	
 	
 	return VM_STATUS_SUCCESS;
