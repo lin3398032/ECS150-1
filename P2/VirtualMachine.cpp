@@ -115,7 +115,7 @@ TVMStatus VMTerminate(TVMThreadID thread)
 {  
 	all[thread]->state = VM_THREAD_STATE_DEAD;
 	//check through the ready queues 
-	vector<tcb*>::iterator itr; 
+	list<tcb*>::iterator itr; 
 	for(itr = high.begin(); itr != high.end(); itr++){
 		if((*itr)->id == thread)
 			high.remove((*itr));
