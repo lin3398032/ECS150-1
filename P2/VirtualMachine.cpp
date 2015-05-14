@@ -34,7 +34,7 @@ class tcb{
 	SMachineContext context; 
 	
 };
-tcb *current; // ptr to the current thread 
+TVMThreadID current; // ptr to the current thread 
 vector<tcb*> all;
 //multiple ready queues one for each priority, thread state declares what goes first 
 //goes into the ready queue when thread is activated
@@ -42,7 +42,7 @@ list<tcb*> high;
 list<tcb*> normal;
 list<tcb*> low;
 //sleeping thread queue
-list<tcb*> sleeping;
+vector<tcb*> sleeping;
 //mutex thread queue
 
 
@@ -62,7 +62,8 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	primary.priority = VM_THREAD_PRIORITY_NORMAL;
 	primary.state = VM_THREAD_STATE_RUNNING;
 	all.push_back(&primary);
-	*current = primary;		
+//	*current = primary;
+	current = primary.id;		
 //primary thread doesnt need a context 	
 	tcb idle; 
 	idle.id = all.size();		
@@ -89,17 +90,24 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 }
 void idleFun(void*){ while(1){} }  
 void AlarmCallback(void *param){
-	if(gtick > 0)
-		gtick--;
-
+	vector<tcb*>::iterator itr; 
+	for(itr = sleeping.begin(); itr != sleeping.end(); itr++)
+	{
+		if((*itr)->ticks > 0)
+			(*itr)->ticks--;
+		else { 
+			(*itr)->state = VM_THREAD_STATE_READY;
+			//queue and then scheldule
+		}
+		
+	}
 }
 
 TVMStatus VMThreadSleep(TVMTick tick){
-	gtick = tick*1000;
-	while(gtick > 0){
-
-
-	}
+	all[current]->ticks = tick;//possibly have to multiply by 1000
+	all[current]->state = VM_THREAD_STATE_WAITING;
+	sleeping.push_back(all[current]); //a function that looks through threads and adds them to the sleep queue
+	//schelduler
 	return(VM_STATUS_SUCCESS);
 }
 
@@ -131,7 +139,7 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 TVMStatus VMThreadActivate(TVMThreadID thread){
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
-	
+	all[thread]->state = VM_THREAD_STATE_READY;	
 	
 	
 	return VM_STATUS_SUCCESS;
@@ -156,6 +164,7 @@ TVMStatus VMThreadState(TVMThreadID thread, TVMThreadStateRef stateref)
 
 void wrapper(void* param){
 	MachineEnableSignals();
-
-
+	all[current]->entry(all[current]->params);
+	cout << "ran entry" << endl;
+	
 }
