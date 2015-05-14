@@ -111,8 +111,18 @@ TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsize, TVMThreadPriority prio, TVMThreadIDRef tid){
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
-
+	tcb thread;
+	*tid = all.size();
+	thread.id = all.size();
+	thread.entry  = entry;
+	thread.params = param;
+	thread.memsize = memsize;
+	thread.priority = prio;
+	thread.state = VM_THREAD_STATE_DEAD;
+	thread.base = new uint8_t[thread.memsize];
 	
+
+		
 	return VM_STATUS_SUCCESS;
 	
 }
