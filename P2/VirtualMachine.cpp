@@ -26,7 +26,8 @@ class tcb{
 	TVMThreadID id; 
 	TVMThreadState state;	
 	TVMTick ticks;
-	uint8_t base; // stack pointer base 
+	void *base; // stack pointer base
+	void* params; 
 	TVMMemorySize memsize;
 	TVMMutexID mid;
 	TVMThreadEntry entry; //entry function need to make a skeleton wrapper for it
@@ -48,7 +49,7 @@ list<tcb*> sleeping;
 // The scheduler is responsible for determining what is the highest priority and therefore what should be running
 int volatile gtick;
 
-
+void idleFun(void*);
 void AlarmCallback(void *params);
 void scheduler(void);
 //will go through queues and run the thread with highest priority
@@ -59,33 +60,33 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	tcb primary;
 	primary.id = all.size(); 
 	primary.priority = VM_THREAD_PRIORITY_NORMAL;
-	primary.state = VM_THREAD_STATE_RUNNING;		
+	primary.state = VM_THREAD_STATE_RUNNING;
+	all.push_back(&primary);		
 //primary thread doesnt need a context 	
 	tcb idle; 
-i	idle.id = all.size();		
+	idle.id = all.size();		
 	idle.priority = VM_THREAD_PRIORITY_LOW;
 	idle.state = VM_THREAD_STATE_READY;
-	idle.memsize = 6400;
-        idle.base = new unit8_t[idle.memsize];	
-        MachineContextCreate(&(idle.context), *(idle.thread), idle.base, idle.memsize  ); 		
-//					
+	idle.memsize = 70000;
+        idle.base = new uint8_t[idle.memsize];
+	idle.entry = idleFun;
+        MachineContextCreate(&(idle.context), *(idle.entry), NULL, idle.base, idle.memsize); 		
+	all.push_back(&idle);
 	MachineInitialize(machinetickms);
 	MachineRequestAlarm(machinetickms, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
-	MachineEnableSignals();
+        MachineEnableSignals();
 
 
 	TVMMainEntry vmmain; //creates a function pointer
 	vmmain = VMLoadModule(argv[0]); //set function pointer to point to this function
 	if(vmmain == NULL)//check if vmmain is pointing to the address of VMLoadModule 
-	
  		cout<< "is  null!" << endl;
 	else
 		vmmain(argc, argv);//run the function it points to, in a way it derefences it
 
   	return(VM_STATUS_SUCCESS);
-
 }
-
+void idleFun(void*){ while(1){} }  
 void AlarmCallback(void *param){
 	if(gtick > 0)
 		gtick--;
