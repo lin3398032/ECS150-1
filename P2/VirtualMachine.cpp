@@ -52,9 +52,11 @@ int volatile gtick;
 
 void AlarmCallback(void *params);
 void scheduler(void);
+//will go through queues and run the thread with highest priority
 
 TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 {
+	
 
 
 	MachineInitialize(machinetickms);
