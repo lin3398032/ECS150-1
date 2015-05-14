@@ -61,7 +61,8 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	primary.id = all.size(); 
 	primary.priority = VM_THREAD_PRIORITY_NORMAL;
 	primary.state = VM_THREAD_STATE_RUNNING;
-	all.push_back(&primary);		
+	all.push_back(&primary);
+	//*current = primary;		
 //primary thread doesnt need a context 	
 	tcb idle; 
 	idle.id = all.size();		
@@ -138,14 +139,24 @@ TVMStatus VMThreadActivate(TVMThreadID thread){
 }
 
 TVMStatus VMThreadState(TVMThreadID thread, TVMThreadStateRef stateref)
-{	
+{
+	if(!stateref)
+		return VM_STATUS_ERROR_INVALID_PARAMETER;		
 
 	vector<tcb*>::iterator itr; 	
 	for(itr = all.begin(); itr != all.end(); itr++){
-		if((*itr)->id == thread)
+		if((*itr)->id == thread){
 			*stateref = all[thread]->state;
+			return(VM_STATUS_SUCCESS);
+		}
 	}
 
 	return(VM_STATUS_SUCCESS);
 }
 
+void wrapper(void* param){
+	MachineEnableSignals();
+
+
+
+}
