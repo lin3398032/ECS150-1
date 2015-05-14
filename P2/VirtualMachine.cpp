@@ -50,6 +50,8 @@ vector<tcb*> sleeping;
 int volatile gtick;
 
 void idleFun(void*);
+void Skeleton(void* params);
+void Ready(TVMThreadID thread); //pushes into a queue based on priority
 void AlarmCallback(void *params);
 void scheduler(void);
 //will go through queues and run the thread with highest priority
@@ -88,7 +90,32 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 
   	return(VM_STATUS_SUCCESS);
 }
-void idleFun(void*){ while(1){} }  
+
+void idleFun(void*){ while(1){} }
+void scheduler(){
+
+
+
+
+
+}
+void Ready(TVMThreadID thread){
+	
+	switch(all[thread]->priority){
+		case VM_THREAD_PRIORITY_LOW: low.push_back(all[thread]); break;
+		case VM_THREAD_PRIORITY_NORMAL: high.push_back(all[thread]); break;
+		case VM_THREAD_PRIORITY_HIGH: normal.push_back(all[thread]); break;		
+	} 
+	return;
+
+} //pushes into a queue based on priority
+void Skeleton(void* params){
+	params = all[current]->params;
+	MachineEnableSignals(); 
+	all[current]->entry(params);
+	VMTerminate(all[current]);
+	
+}  
 void AlarmCallback(void *param){
 	vector<tcb*>::iterator itr; 
 	for(itr = sleeping.begin(); itr != sleeping.end(); itr++)
@@ -139,7 +166,10 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 TVMStatus VMThreadActivate(TVMThreadID thread){
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
+	//MachineCreateContext(&(all[current], )
+        MachineContextCreate(&(all[current]->context), *(all[current]->entry), NULL, all[current]->base, all[current]->memsize); 		
 	all[thread]->state = VM_THREAD_STATE_READY;	
+//put into a ready queue? 
 	
 	
 	return VM_STATUS_SUCCESS;
@@ -162,9 +192,3 @@ TVMStatus VMThreadState(TVMThreadID thread, TVMThreadStateRef stateref)
 	return(VM_STATUS_SUCCESS);
 }
 
-void wrapper(void* param){
-	MachineEnableSignals();
-	all[current]->entry(all[current]->params);
-	cout << "ran entry" << endl;
-	
-}
