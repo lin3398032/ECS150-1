@@ -66,7 +66,8 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	primary->priority = VM_THREAD_PRIORITY_NORMAL;
 	primary->state = VM_THREAD_STATE_RUNNING;
 	all[primary->id] = (primary);
-	current = primary->id;		
+	current = primary->id;	
+	cout << "current is  " << current << endl; 	
 //primary thread doesnt need a context 
 	tcb* tidle = new tcb;	
 	tidle->id = all.size();		
@@ -78,6 +79,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
         MachineContextCreate(&(tidle->context), *(tidle->entry), NULL, tidle->base, tidle->memsize); 		
 	all[tidle->id] = (tidle);
 	idle = tidle->id;
+	cout << "idle is " << idle << endl; 
 	MachineInitialize(machinetickms);
 	MachineRequestAlarm(machinetickms, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
         MachineEnableSignals();
@@ -93,7 +95,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
   	return(VM_STATUS_SUCCESS);
 }
 
-void idleFun(void*){ while(1){} }
+void idleFun(void*){ MachineEnableSignals();  while(1){  cout << "idle" << endl; } }
 void schedule(){
 	cout << "scheduler" << endl;
 	cout << "current thread id: " << current << endl; 	
@@ -117,10 +119,10 @@ void schedule(){
 	else{
 
 		cout << "no threads found need to switch to idle!" << endl;
-		MachineResumeSignals(&oldstate);
-		MachineContextSwitch(&all[current]->context, &all[idle]->context);
+		TVMThreadID prev = current;
+		current = idle; 
+		MachineContextSwitch(&all[prev]->context, &all[current]->context);
 		cout << "context switched" << endl;
-		current = idle;
 	}
 
 	
@@ -154,6 +156,14 @@ TVMStatus VMTerminate(TVMThreadID thread)
 		if((*itr)->id == thread)
 			high.remove((*itr));
 	}
+	for(itr = normal.begin(); itr != normal.end(); itr++){
+		if((*itr)->id == thread)
+			normal.remove((*itr));
+	}
+	for(itr = low.begin(); itr != low.end(); itr++){
+		if((*itr)->id == thread)
+			low.remove((*itr));
+	}
 	schedule(); 
 	//need one for low and normal and error checking according to specs
 	 MachineResumeSignals(&oldstate);
@@ -169,7 +179,7 @@ void Skeleton(void* params){
 	MachineEnableSignals(); 
 	all[current]->entry(params);
 	VMTerminate(all[current]->id);
-	
+	return;	
 }  
 void AlarmCallback(void *param){
 	vector<tcb*>::iterator itr; 

@@ -156,6 +156,14 @@ TVMStatus VMTerminate(TVMThreadID thread)
 		if((*itr)->id == thread)
 			high.remove((*itr));
 	}
+	for(itr = normal.begin(); itr != normal.end(); itr++){
+		if((*itr)->id == thread)
+			normal.remove((*itr));
+	}
+	for(itr = low.begin(); itr != low.end(); itr++){
+		if((*itr)->id == thread)
+			low.remove((*itr));
+	}
 	schedule(); 
 	//need one for low and normal and error checking according to specs
 	 MachineResumeSignals(&oldstate);
