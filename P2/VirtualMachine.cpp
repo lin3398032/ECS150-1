@@ -122,12 +122,12 @@ void schedule(){
 
 	else if(!normal.empty()){
 		if(current == (normal.front())->id){
-	//		cout << "current already schelduled" << endl;	
+			//cout << "current already schelduled" << endl;	
 			MachineResumeSignals(&oldstate); 
 			return;
 	 	} else {
 			(normal.front())->state = VM_THREAD_STATE_RUNNING;
-	//		cout << "context switched to normal!" << endl;
+			//cout << "context switched to normal!" << endl;
 			TVMThreadID tmp =(normal.front())->id;
 			TVMThreadID prev = current;
 			current = tmp;
@@ -153,7 +153,7 @@ void schedule(){
 	}
 	else{
 
-		//cout << "no threads found need to switch to idle!" << endl;
+		cout << "no threads found need to switch to idle!" << endl;
 		TVMThreadID prev = current;
 		current = idle; 
 		MachineContextSwitch(&all[prev]->context, &all[current]->context);
@@ -180,13 +180,22 @@ void Ready(TVMThreadID thread){
 } //pushes into a queue based on priority
 
 TVMStatus VMTerminate(TVMThreadID thread)
-{  
-	cout << "thread termination" << endl; 
+{ 
+//      remove from all queues 
+//	cout << "thread termination" << endl; 
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
 	all[thread]->state = VM_THREAD_STATE_DEAD;
 	//check through the ready queues 
 	list<tcb*>::iterator itr; 
+	for(itr = high.begin(); itr != high.end(); itr++){
+		if((*itr)->id == thread){
+			cout << "going to remove " << (*itr)->id << endl;
+			high.remove((*itr));
+			cout << " removed " << endl;
+			schedule(); 		
+		}
+	}
 	for(itr = normal.begin(); itr != normal.end(); itr++){
 		if((*itr)->id == thread){
 			cout << "going to remove " << (*itr)->id << endl;
@@ -195,7 +204,15 @@ TVMStatus VMTerminate(TVMThreadID thread)
 			schedule(); 		
 		}
 	}
-	cout << " terminated " << endl; 
+	for(itr = low.begin(); itr != low.end(); itr++){
+		if((*itr)->id == thread){
+			cout << "going to remove " << (*itr)->id << endl;
+			low.remove((*itr));
+			cout << " removed " << endl;
+			schedule(); 		
+		}
+	}
+//	cout << " terminated " << endl; 
 	schedule(); 
 	//need one for low and normal and error checking according to specs
 	 MachineResumeSignals(&oldstate);
@@ -286,6 +303,8 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 }
 
 TVMStatus VMThreadActivate(TVMThreadID thread){
+	//need to handle high priority 
+	//need to check and see if its dead first
 	cout << "Activate thread " << thread << endl;
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate); 
