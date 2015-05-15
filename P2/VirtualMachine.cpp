@@ -97,8 +97,8 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 
 void idleFun(void*){  while(1){} }
 void schedule(){
-	cout << "scheduler" << endl;
-	cout << "current thread id: " << current << endl; 	
+	//cout << "scheduler" << endl;
+	//cout << "current thread id: " << current << endl; 	
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
 	if(!high.empty()){
@@ -120,7 +120,7 @@ void schedule(){
 	else if(!normal.empty() && normal.front()->id != current && (normal.front())->state != VM_THREAD_STATE_WAITING){
 			if((normal.front())->state == VM_THREAD_STATE_DEAD){ cout << "its dead " << (normal.front())->id << endl; }
 			(normal.front())->state = VM_THREAD_STATE_RUNNING;
-			cout << current <<" context switched to normal! " << (normal.front())->id << endl;
+			//cout << current <<" context switched to normal! " << (normal.front())->id << endl;
 			TVMThreadID tmp =(normal.front())->id;
 			TVMThreadID prev = current;
 			current = tmp;
@@ -144,7 +144,7 @@ void schedule(){
 	}
 	else{
 
-		cout << "no threads found need to switch to idle!" << endl;
+	//	cout << "no threads found need to switch to idle!" << endl;
 		TVMThreadID prev = current;
 		current = idle; 
 		MachineContextSwitch(&all[prev]->context, &all[current]->context);
@@ -235,10 +235,10 @@ void AlarmCallback(void *param){
 	itr = sleeping.begin(); 
 	while(itr != sleeping.end())
 	{	
-		cout << "ticks left " << (*itr)->ticks << endl; 
+	//	cout << "ticks left " << (*itr)->ticks << endl; 
 		(*itr)->ticks--;
 		if((*itr)->ticks == 0) { 
-			cout << "tock" << endl;
+	//		cout << "tock" << endl;
 			(*itr)->state = VM_THREAD_STATE_READY;
 			Ready((*itr)->id); //put into a ready queue
 			sleeping.erase(itr);
@@ -249,7 +249,6 @@ void AlarmCallback(void *param){
 }
 
 TVMStatus VMThreadSleep(TVMTick tick){
-	cout << "in sleep" << endl;
 	//TMachineSignalState oldstate;
 	//MachineSuspendSignals(&oldstate);
 	all[current]->ticks = tick;//possibly have to multiply by 1000
