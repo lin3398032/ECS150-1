@@ -61,23 +61,23 @@ void schedule(void);
 TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 {
 	
-	tcb primary;
-	primary.id = all.size(); 
-	primary.priority = VM_THREAD_PRIORITY_NORMAL;
-	primary.state = VM_THREAD_STATE_RUNNING;
-	all[primary.id] = (&primary);
-	current = primary.id;		
+	tcb* primary = new tcb;
+	primary->id = all.size(); 
+	primary->priority = VM_THREAD_PRIORITY_NORMAL;
+	primary->state = VM_THREAD_STATE_RUNNING;
+	all[primary->id] = (primary);
+	current = primary->id;		
 //primary thread doesnt need a context 
-	tcb tidle;	
-	tidle.id = all.size();		
-	tidle.priority = VM_THREAD_PRIORITY_LOW;
-	tidle.state = VM_THREAD_STATE_READY;
-	tidle.memsize = 70000;
-        tidle.base = new uint8_t[tidle.memsize];
-	tidle.entry = idleFun;
-        MachineContextCreate(&(tidle.context), *(tidle.entry), NULL, tidle.base, tidle.memsize); 		
-	all[tidle.id] = (&tidle);
-	idle = tidle.id;
+	tcb* tidle new tcb;	
+	tidle->id = all.size();		
+	tidle->priority = VM_THREAD_PRIORITY_LOW;
+	tidle->state = VM_THREAD_STATE_READY;
+	tidle->memsize = 70000;
+        tidle->base = new uint8_t[tidle.memsize];
+	tidle->entry = idleFun;
+        MachineContextCreate(&(tidle->context), *(tidle->entry), NULL, tidle->base, tidle->memsize); 		
+	all[tidle->id] = (tidle);
+	idle = tidle->id;
 	MachineInitialize(machinetickms);
 	MachineRequestAlarm(machinetickms, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
         MachineEnableSignals();
