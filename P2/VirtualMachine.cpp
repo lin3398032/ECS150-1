@@ -73,7 +73,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	tidle->id = all.size();		
 	tidle->priority = VM_THREAD_PRIORITY_LOW;
 	tidle->state = VM_THREAD_STATE_READY;
-	tidle->memsize = 70000;
+	tidle->memsize = 1000000;
         tidle->base = new uint8_t[tidle->memsize];
 	tidle->entry = idleFun;
         MachineContextCreate(&(tidle->context), *Skeleton, NULL, tidle->base, tidle->memsize); 		
@@ -81,7 +81,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	idle = tidle->id;
 	//cout << "idle is " << idle << endl; 
 	MachineInitialize(machinetickms);
-	MachineRequestAlarm(machinetickms, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
+	MachineRequestAlarm(machinetickms*1000, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
         MachineEnableSignals();
 
 
@@ -99,39 +99,37 @@ void idleFun(void*){  while(1){  //cout << "idle" << endl;
 			} }
 void schedule(){
 	//cout << "scheduler" << endl;
-	cout << "current thread id: " << current << endl; 	
+	//cout << "current thread id: " << current << endl; 	
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
 	if(!high.empty()){
 		if(current = (high.front())->id){
 			//cout << "current already schelduled" << endl;	
-			high.pop_front();  
-			MachineResumeSignals(&oldstate); 
-			return;
+			//MachineResumeSignals(&oldstate); 
+			//return;
 	 	} else {
 			//cout << "context switched to high!" << endl;
 			(high.front())->state = VM_THREAD_STATE_RUNNING;
 			TVMThreadID tmp =(high.front())->id;
 			TVMThreadID prev = current;
-			current = tmp;
-			
-			high.pop_front();  
+			current = tmp;	
 			MachineContextSwitch(&all[prev]->context, &all[current]->context);
+
 		}
 	}
 
 	else if(!normal.empty()){
 		if(current == (normal.front())->id){
 			//cout << "current already schelduled" << endl;	
-			MachineResumeSignals(&oldstate); 
-			return;
+			//MachineResumeSignals(&oldstate); 
+			//return;
 	 	} else {
+			//if((normal.front())->state == VM_THREAD_STATE_DEAD){ cout << "its dead " << (normal.front())->id << endl; }
 			(normal.front())->state = VM_THREAD_STATE_RUNNING;
-			//cout << "context switched to normal!" << endl;
+			//cout << current <<" context switched to normal! " << (normal.front())->id << endl;
 			TVMThreadID tmp =(normal.front())->id;
 			TVMThreadID prev = current;
 			current = tmp;
-			normal.pop_front(); 
 			MachineContextSwitch(&all[prev]->context, &all[current]->context);
 		}
 	}
@@ -139,21 +137,20 @@ void schedule(){
 	else if(!low.empty()){
 		if(current == (low.front())->id){
 			//cout << "current already schelduled" << endl;	
-			MachineResumeSignals(&oldstate); 
-			return;
+			//MachineResumeSignals(&oldstate); 
+			//return;
 	 	} else {
 			//cout << "context switched to low!" << endl;
 			(low.front())->state = VM_THREAD_STATE_RUNNING;
 			TVMThreadID tmp =(low.front())->id;
 			TVMThreadID prev = current;
 			current = tmp; 
-			low.pop_front();
 			MachineContextSwitch(&all[prev]->context, &all[current]->context);
 		}
 	}
 	else{
 
-		cout << "no threads found need to switch to idle!" << endl;
+		//cout << "no threads found need to switch to idle!" << endl;
 		TVMThreadID prev = current;
 		current = idle; 
 		MachineContextSwitch(&all[prev]->context, &all[current]->context);
@@ -168,7 +165,7 @@ void schedule(){
 
 }
 void Ready(TVMThreadID thread){
-//	cout << "ready the thread: " << thread << " with thread priority " << all[thread]->priority << endl;	
+	//cout << "ready the thread: " << thread << " with thread priority " << all[thread]->priority << endl;	
 	switch(all[thread]->priority){
 		case VM_THREAD_PRIORITY_LOW: low.push_back(all[thread]); return;
 		case VM_THREAD_PRIORITY_NORMAL: normal.push_back(all[thread]); return;
@@ -181,39 +178,41 @@ void Ready(TVMThreadID thread){
 
 TVMStatus VMTerminate(TVMThreadID thread)
 { 
-//      remove from all queues 
-//	cout << "thread termination" << endl; 
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
-	all[thread]->state = VM_THREAD_STATE_DEAD;
-	//check through the ready queues 
+	//all[thread]->state = VM_THREAD_STATE_DEAD;
+	//remove through the ready queues 
 	list<tcb*>::iterator itr; 
-	for(itr = high.begin(); itr != high.end(); itr++){
-		if((*itr)->id == thread){
+	for(itr = high.begin(); itr != high.end(); ++itr){
+		if((*itr)->id == thread && (*itr)->state != VM_THREAD_STATE_DEAD){
 			cout << "going to remove " << (*itr)->id << endl;
+			(*itr)->state = VM_THREAD_STATE_DEAD;
 			high.remove((*itr));
 			cout << " removed " << endl;
-			schedule(); 		
+			schedule();
+			 		
 		}
 	}
-	for(itr = normal.begin(); itr != normal.end(); itr++){
-		if((*itr)->id == thread){
-			cout << "going to remove " << (*itr)->id << endl;
+	for(itr = normal.begin(); itr != normal.end(); ++itr){
+		if((*itr)->id == thread && (*itr)->state != VM_THREAD_STATE_DEAD){
+			//cout << "going to remove " << (*itr)->id << endl;
+			(*itr)->state = VM_THREAD_STATE_DEAD;
 			normal.remove((*itr));
-			cout << " removed " << endl;
-			schedule(); 		
+			//cout << " removed " << endl;
+			schedule();		 		
 		}
 	}
-	for(itr = low.begin(); itr != low.end(); itr++){
-		if((*itr)->id == thread){
+	for(itr = low.begin(); itr != low.end(); ++itr){
+		if((*itr)->id == thread && (*itr)->state != VM_THREAD_STATE_DEAD){
 			cout << "going to remove " << (*itr)->id << endl;
+			(*itr)->state = VM_THREAD_STATE_DEAD;
 			low.remove((*itr));
 			cout << " removed " << endl;
-			schedule(); 		
+			schedule();		 		
 		}
 	}
-//	cout << " terminated " << endl; 
-	schedule(); 
+	cout << " terminated " << endl; 
+	all[thread]->state = VM_THREAD_STATE_DEAD;
 	//need one for low and normal and error checking according to specs
 	 MachineResumeSignals(&oldstate);
 	return(VM_STATUS_SUCCESS);
@@ -231,43 +230,36 @@ TVMStatus VMThreadDelete(TVMThreadID thread){
 
 }
 void Skeleton(void* params){
-	params = all[current]->params;
 	MachineEnableSignals(); 
-	all[current]->entry(params);
+	all[current]->entry(all[current]->params);
 	VMTerminate(all[current]->id);
-	cout << "end of skeleton" << endl;
+	//cout << "end of skeleton" << endl;
 }  
 void AlarmCallback(void *param){
 	vector<tcb*>::iterator itr;
-	//cout << sleeping.size() << " threads sleeping" << endl;  
-	for(itr = sleeping.begin(); itr != sleeping.end(); itr++)
+	itr = sleeping.begin(); 
+	while(itr != sleeping.end())
 	{	
-	//	cout << "ticks left " << (*itr)->ticks << endl; 
-		if((*itr)->ticks > 0){
-			(*itr)->ticks--;
-		//	cout << "tick" << endl;
-		}
-		else { 
-			//cout << "tock" << endl;
-			
+		cout << "ticks left " << (*itr)->ticks << endl; 
+		(*itr)->ticks--;
+		if((*itr)->ticks == 0) { 
+			cout << "tock" << endl;
 			(*itr)->state = VM_THREAD_STATE_READY;
 			Ready((*itr)->id); //put into a ready queue
 			sleeping.erase(itr);
-			schedule();
-			return;
-		}
+		} else { itr++; } 
 		
 	}
+	schedule();
 }
 
 TVMStatus VMThreadSleep(TVMTick tick){
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
-	all[current]->ticks = tick*1000;//possibly have to multiply by 1000
+	all[current]->ticks = tick;//possibly have to multiply by 1000
 	all[current]->state = VM_THREAD_STATE_WAITING;
 	sleeping.push_back(all[current]); //a function that looks through threads and adds them to the sleep queue
-	//cout << "put thread  " << current << " to sleep with " << all[current]->ticks << " ticks"<< endl;
-	schedule();	
+	schedule();//cout << "put thread  " << current << " to sleep with " << all[current]->ticks << " ticks"<< endl;
 	MachineResumeSignals(&oldstate);
 	return(VM_STATUS_SUCCESS);
 }
@@ -305,10 +297,10 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 TVMStatus VMThreadActivate(TVMThreadID thread){
 	//need to handle high priority 
 	//need to check and see if its dead first
-	cout << "Activate thread " << thread << endl;
+	//cout << "Activate thread " << thread << endl;
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate); 
-        MachineContextCreate(&(all[thread]->context), *Skeleton, NULL, all[thread]->base, all[thread]->memsize); 		
+        MachineContextCreate(&(all[thread]->context), *Skeleton, all[thread]->params, all[thread]->base, all[thread]->memsize); 		
 	all[thread]->state = VM_THREAD_STATE_READY;
 	//cout << "activated thread: " << thread << " with a state of " << all[thread]->state << endl;   
 	Ready(thread);//put into a ready queue 
