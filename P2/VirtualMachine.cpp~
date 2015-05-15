@@ -144,6 +144,7 @@ void Ready(TVMThreadID thread){
 
 TVMStatus VMTerminate(TVMThreadID thread)
 {  
+	cout << "thread termination" << endl; 
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
 	all[thread]->state = VM_THREAD_STATE_DEAD;

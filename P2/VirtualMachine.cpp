@@ -117,10 +117,11 @@ void schedule(){
 	else{
 
 		cout << "no threads found need to switch to idle!" << endl;
+		TVMThreadID tmp = current;
+		current =idle; 
 		MachineResumeSignals(&oldstate);
-		MachineContextSwitch(&all[current]->context, &all[idle]->context);
+		MachineContextSwitch(&all[tmp]->context, &all[current]->context);
 		cout << "context switched" << endl;
-		current = idle;
 	}
 
 	
