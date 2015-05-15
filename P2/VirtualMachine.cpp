@@ -228,7 +228,7 @@ TVMStatus VMThreadSleep(TVMTick tick){
 	all[current]->ticks = tick;//possibly have to multiply by 1000
 	all[current]->state = VM_THREAD_STATE_WAITING;
 	sleeping.push_back(all[current]); //a function that looks through threads and adds them to the sleep queue
-	cout << "put thread  " << current << " to sleep with " << tick << " ticks"<< endl;
+	cout << "put thread  " << current << " to sleep with " << all[current]->ticks << " ticks"<< endl;
 	schedule();
 	MachineResumeSignals(&oldstate);
 	return(VM_STATUS_SUCCESS);
