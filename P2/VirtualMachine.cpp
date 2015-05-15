@@ -65,7 +65,6 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	primary.priority = VM_THREAD_PRIORITY_NORMAL;
 	primary.state = VM_THREAD_STATE_RUNNING;
 	all[primary.id] = (&primary);
-//	*current = primary;
 	current = primary.id;		
 //primary thread doesnt need a context 	
 	tcb idle; 
@@ -93,12 +92,22 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 }
 
 void idleFun(void*){ while(1){} }
-void schedule(){
+void schedule(){	
+	TMachineSignalState oldstate;
+	MachineSuspendSignals(&oldstate);
 	if(!high.empty()){
-		
-		current = (high.front())->id; 
-	 
+		if(current == (high.front())->id){	
+			MachineResumeSignals(&oldstate); 
+			return;
+	 	} else {
+			
+			MachineContextSwitch(&all[current]->context, &all[high.front()->id]->context);
+	
+		}
 	}
+	//if(!normal.empty())
+	//if(!low.empty())
+	
 
 }
 void Ready(TVMThreadID thread){
