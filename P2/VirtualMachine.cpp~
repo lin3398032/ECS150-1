@@ -76,7 +76,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	tidle->memsize = 70000;
         tidle->base = new uint8_t[tidle->memsize];
 	tidle->entry = idleFun;
-        MachineContextCreate(&(tidle->context), *(tidle->entry), NULL, tidle->base, tidle->memsize); 		
+        MachineContextCreate(&(tidle->context), *Skeleton, NULL, tidle->base, tidle->memsize); 		
 	all[tidle->id] = (tidle);
 	idle = tidle->id;
 	cout << "idle is " << idle << endl; 
@@ -95,7 +95,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
   	return(VM_STATUS_SUCCESS);
 }
 
-void idleFun(void*){ MachineEnableSignals();  while(1){  cout << "idle" << endl; } }
+void idleFun(void*){  while(1){  cout << "idle" << endl; } }
 void schedule(){
 	cout << "scheduler" << endl;
 	cout << "current thread id: " << current << endl; 	
@@ -182,6 +182,14 @@ TVMStatus VMTerminate(TVMThreadID thread)
 		if((*itr)->id == thread)
 			high.remove((*itr));
 	}
+	for(itr = normal.begin(); itr != normal.end(); itr++){
+		if((*itr)->id == thread)
+			normal.remove((*itr));
+	}
+	for(itr = low.begin(); itr != low.end(); itr++){
+		if((*itr)->id == thread)
+			low.remove((*itr));
+	}
 	schedule(); 
 	//need one for low and normal and error checking according to specs
 	 MachineResumeSignals(&oldstate);
@@ -208,7 +216,7 @@ void AlarmCallback(void *param){
 		else { 
 			(*itr)->state = VM_THREAD_STATE_READY;
 			Ready((*itr)->id); //put into a ready queue
-			schedule();
+			schedule();//scheldule another queue
 		}
 		
 	}
@@ -221,8 +229,8 @@ TVMStatus VMThreadSleep(TVMTick tick){
 	all[current]->state = VM_THREAD_STATE_WAITING;
 	sleeping.push_back(all[current]); //a function that looks through threads and adds them to the sleep queue
 	cout << "put thread  " << current << " to sleep with " << tick << " ticks"<< endl;
-	//schedule();
-	 MachineResumeSignals(&oldstate);
+	schedule();
+	MachineResumeSignals(&oldstate);
 	return(VM_STATUS_SUCCESS);
 }
 
@@ -265,7 +273,7 @@ TVMStatus VMThreadActivate(TVMThreadID thread){
 	cout << "activated thread: " << thread << " with a state of " << all[thread]->state << endl;   
 	Ready(thread);//put into a ready queue 
 	schedule(); 	
-	 MachineResumeSignals(&oldstate);
+	MachineResumeSignals(&oldstate);
 	return VM_STATUS_SUCCESS;
 
 }
