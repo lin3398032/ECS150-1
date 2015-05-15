@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <vector>
 #include<list>
+#include <map>
 //for testing 
 #include <iostream> 
 #include <cstdlib> 
@@ -35,7 +36,7 @@ class tcb{
 	
 };
 TVMThreadID current; // ptr to the current thread 
-vector<tcb*> all;
+map<TVMThreadID, tcb*> all;
 //multiple ready queues one for each priority, thread state declares what goes first 
 //goes into the ready queue when thread is activated
 list<tcb*> high;
@@ -53,7 +54,7 @@ void idleFun(void*);
 void Skeleton(void* params);
 void Ready(TVMThreadID thread); //pushes into a queue based on priority
 void AlarmCallback(void *params);
-void scheduler(void);
+void schedule(void);
 //will go through queues and run the thread with highest priority
 
 TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
@@ -63,7 +64,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	primary.id = all.size(); 
 	primary.priority = VM_THREAD_PRIORITY_NORMAL;
 	primary.state = VM_THREAD_STATE_RUNNING;
-	all.push_back(&primary);
+	all[primary.id] = (&primary);
 //	*current = primary;
 	current = primary.id;		
 //primary thread doesnt need a context 	
@@ -75,7 +76,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
         idle.base = new uint8_t[idle.memsize];
 	idle.entry = idleFun;
         MachineContextCreate(&(idle.context), *(idle.entry), NULL, idle.base, idle.memsize); 		
-	all.push_back(&idle);
+	all[idle.id] = (&idle);
 	MachineInitialize(machinetickms);
 	MachineRequestAlarm(machinetickms, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
         MachineEnableSignals();
@@ -92,11 +93,12 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 }
 
 void idleFun(void*){ while(1){} }
-void scheduler(){
-
-
-
-
+void schedule(){
+	if(!high.empty()){
+		
+		current = (high.front())->id; 
+	 
+	}
 
 }
 void Ready(TVMThreadID thread){
@@ -120,10 +122,14 @@ TVMStatus VMTerminate(TVMThreadID thread)
 		if((*itr)->id == thread)
 			high.remove((*itr));
 	}
-	
+	//need one for low and normal and error checking according to specs
 	return(VM_STATUS_SUCCESS);
 }
+TVMStatus VMThreadDelete(TVMThreadID thread){
 
+	return(VM_STATUS_SUCCESS);
+
+}
 void Skeleton(void* params){
 	params = all[current]->params;
 	MachineEnableSignals(); 
@@ -149,7 +155,7 @@ TVMStatus VMThreadSleep(TVMTick tick){
 	all[current]->ticks = tick;//possibly have to multiply by 1000
 	all[current]->state = VM_THREAD_STATE_WAITING;
 	sleeping.push_back(all[current]); //a function that looks through threads and adds them to the sleep queue
-	//schelduler
+	schedule();
 	return(VM_STATUS_SUCCESS);
 }
 
@@ -171,7 +177,7 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	thread.priority = prio;
 	thread.state = VM_THREAD_STATE_DEAD;
 	thread.base = new uint8_t[thread.memsize];
-		
+	all[thread.id] = &thread;//added to map 	
 
 		
 	return VM_STATUS_SUCCESS;
@@ -180,12 +186,11 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 
 TVMStatus VMThreadActivate(TVMThreadID thread){
 	TMachineSignalState oldstate;
-	MachineSuspendSignals(&oldstate);
-	//MachineCreateContext(&(all[current], )
-        MachineContextCreate(&(all[current]->context), *(all[current]->entry), NULL, all[current]->base, all[current]->memsize); 		
-	all[thread]->state = VM_THREAD_STATE_READY;	
-	Ready(all[thread]->id);//put into a ready queue 
+	MachineSuspendSignals(&oldstate); 
+	all[thread]->state = VM_THREAD_STATE_READY;
+        MachineContextCreate(&(all[thread]->context), *(all[thread]->entry), NULL, all[thread]->base, all[thread]->memsize); 		
 	
+	Ready(thread);//put into a ready queue 
 	
 	return VM_STATUS_SUCCESS;
 
@@ -196,9 +201,9 @@ TVMStatus VMThreadState(TVMThreadID thread, TVMThreadStateRef stateref)
 	if(!stateref)
 		return VM_STATUS_ERROR_INVALID_PARAMETER;		
 
-	vector<tcb*>::iterator itr; 	
+	map<TVMThreadID, tcb*>::iterator itr; 	
 	for(itr = all.begin(); itr != all.end(); itr++){
-		if((*itr)->id == thread){
+		if(itr->first == thread){
 			*stateref = all[thread]->state;
 			return(VM_STATUS_SUCCESS);
 		}
