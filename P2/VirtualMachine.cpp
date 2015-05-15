@@ -187,7 +187,7 @@ TVMStatus VMTerminate(TVMThreadID thread)
 			schedule(); 		
 		}
 	}
-	cout << " done! " << endl; 
+	cout << " terminated " << endl; 
 	schedule(); 
 	//need one for low and normal and error checking according to specs
 	 MachineResumeSignals(&oldstate);
@@ -198,14 +198,11 @@ TVMStatus VMThreadDelete(TVMThreadID thread){
 	map<TVMThreadID, tcb*>::iterator itr;
 	for(itr = all.begin(); itr != all.end(); itr++){
 		if(all[itr->first]->state != VM_THREAD_STATE_DEAD){
-			cout << "YYYEEEEEE " << itr->first << endl;
-			//all.erase(itr);
+			cout << "Delete " << itr->first << endl;
+			all.erase(itr);
 			}
 	}
 	
-	return(VM_STATUS_SUCCESS);
-
-}
 	return(VM_STATUS_SUCCESS);
 
 }
@@ -240,7 +237,7 @@ TVMStatus VMThreadSleep(TVMTick tick){
 	all[current]->ticks = tick;//possibly have to multiply by 1000
 	all[current]->state = VM_THREAD_STATE_WAITING;
 	sleeping.push_back(all[current]); //a function that looks through threads and adds them to the sleep queue
-	cout << "put thread  " << current << " to sleep with " << all[current]->ticks << " ticks"<< endl;
+	//cout << "put thread  " << current << " to sleep with " << all[current]->ticks << " ticks"<< endl;
 	schedule();
 	MachineResumeSignals(&oldstate);
 	return(VM_STATUS_SUCCESS);
