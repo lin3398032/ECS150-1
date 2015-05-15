@@ -209,9 +209,12 @@ void AlarmCallback(void *param){
 	vector<tcb*>::iterator itr; 
 	for(itr = sleeping.begin(); itr != sleeping.end(); itr++)
 	{
-		if((*itr)->ticks > 0)
+		if((*itr)->ticks > 0){
 			(*itr)->ticks--;
+			cout << "tick" << endl;
+		}
 		else { 
+			cout << "tock" << endl;
 			(*itr)->state = VM_THREAD_STATE_READY;
 			Ready((*itr)->id); //put into a ready queue
 			schedule();
@@ -223,7 +226,7 @@ void AlarmCallback(void *param){
 TVMStatus VMThreadSleep(TVMTick tick){
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
-	all[current]->ticks = tick*1000;//possibly have to multiply by 1000
+	all[current]->ticks = tick;//possibly have to multiply by 1000
 	all[current]->state = VM_THREAD_STATE_WAITING;
 	sleeping.push_back(all[current]); //a function that looks through threads and adds them to the sleep queue
 	cout << "put thread  " << current << " to sleep with " << all[current]->ticks << " ticks"<< endl;
@@ -263,7 +266,7 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 }
 
 TVMStatus VMThreadActivate(TVMThreadID thread){
-	cout << "Activate thread " << thread << endl;
+	//cout << "Activate thread " << thread << endl;
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate); 
         MachineContextCreate(&(all[thread]->context), *Skeleton, NULL, all[thread]->base, all[thread]->memsize); 		
