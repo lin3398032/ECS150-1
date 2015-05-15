@@ -108,7 +108,7 @@ void schedule(){
 			return;
 	 	} else {
 			cout << "context switched to high!" << endl;
-			tcb tmp =(high.front())->id;
+			TVMThreadID tmp =(high.front())->id;
 			TVMThreadID prev = current;
 			current = tmp; 
 			MachineContextSwitch(&all[prev]->context, &all[current]->context);
@@ -122,7 +122,7 @@ void schedule(){
 			return;
 	 	} else {
 			cout << "context switched to normal!" << endl;
-			tcb tmp =(normal.front())->id;
+			TVMThreadID tmp =(normal.front())->id;
 			TVMThreadID prev = current;
 			current = tmp; 
 			MachineContextSwitch(&all[prev]->context, &all[current]->context);
@@ -136,7 +136,7 @@ void schedule(){
 			return;
 	 	} else {
 			cout << "context switched to low!" << endl;
-			tcb tmp =(low.front())->id;
+			TVMThreadID tmp =(low.front())->id;
 			TVMThreadID prev = current;
 			current = tmp; 
 			MachineContextSwitch(&all[prev]->context, &all[current]->context);
