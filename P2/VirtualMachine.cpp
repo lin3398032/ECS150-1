@@ -194,7 +194,6 @@ TVMStatus VMTerminate(TVMThreadID thread)
 	return(VM_STATUS_SUCCESS);
 }
 TVMStatus VMThreadDelete(TVMThreadID thread){
-	TVMStatus VMThreadDelete(TVMThreadID thread){
 	map<TVMThreadID, tcb*>::iterator itr;
 	for(itr = all.begin(); itr != all.end(); itr++){
 		if(all[itr->first]->state != VM_THREAD_STATE_DEAD){
