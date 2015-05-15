@@ -216,7 +216,7 @@ void AlarmCallback(void *param){
 		else { 
 			(*itr)->state = VM_THREAD_STATE_READY;
 			Ready((*itr)->id); //put into a ready queue
-			schedule();//scheldule another queue
+			schedule();
 		}
 		
 	}
@@ -252,7 +252,7 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	thread->priority = prio;
 	thread->state = VM_THREAD_STATE_DEAD;
 	thread->base = new uint8_t[thread->memsize];
-	MachineContextCreate(&(thread->context), *(thread->entry), thread->params, thread->base, thread->memsize); 		
+	MachineContextCreate(&(thread->context), *Skeleton, thread->params, thread->base, thread->memsize); 		
 	all[thread->id] = thread;//added to map 	
 	cout << "memsize from app " << memsize << endl;
 	cout << "check map: " << " prio " << all[*tid]->priority << " memsize " << all[*tid]->memsize << endl;
@@ -268,7 +268,7 @@ TVMStatus VMThreadActivate(TVMThreadID thread){
 	cout << "Activate thread " << thread << endl;
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate); 
-        MachineContextCreate(&(all[thread]->context), *(all[thread]->entry), NULL, all[thread]->base, all[thread]->memsize); 		
+        MachineContextCreate(&(all[thread]->context), *Skeleton, NULL, all[thread]->base, all[thread]->memsize); 		
 	all[thread]->state = VM_THREAD_STATE_READY;
 	cout << "activated thread: " << thread << " with a state of " << all[thread]->state << endl;   
 	Ready(thread);//put into a ready queue 
