@@ -68,12 +68,12 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	all[primary->id] = (primary);
 	current = primary->id;		
 //primary thread doesnt need a context 
-	tcb* tidle new tcb;	
+	tcb* tidle = new tcb;	
 	tidle->id = all.size();		
 	tidle->priority = VM_THREAD_PRIORITY_LOW;
 	tidle->state = VM_THREAD_STATE_READY;
 	tidle->memsize = 70000;
-        tidle->base = new uint8_t[tidle.memsize];
+        tidle->base = new uint8_t[tidle->memsize];
 	tidle->entry = idleFun;
         MachineContextCreate(&(tidle->context), *(tidle->entry), NULL, tidle->base, tidle->memsize); 		
 	all[tidle->id] = (tidle);
