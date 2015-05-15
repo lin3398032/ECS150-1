@@ -95,7 +95,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
   	return(VM_STATUS_SUCCESS);
 }
 
-void idleFun(void*){ while(1){} }
+void idleFun(void*){ MachineEnableSignals();  while(1){  cout << "idle" << endl; } }
 void schedule(){
 	cout << "scheduler" << endl;
 	cout << "current thread id: " << current << endl; 	
@@ -120,10 +120,8 @@ void schedule(){
 
 		cout << "no threads found need to switch to idle!" << endl;
 		TVMThreadID prev = current;
-		cout << "prev " << prev << endl;
 		current = idle; 
-		cout << current << endl;
-	//	MachineContextSwitch(&all[prev]->context, &all[current]->context);
+		MachineContextSwitch(&all[prev]->context, &all[current]->context);
 		cout << "context switched" << endl;
 	}
 
