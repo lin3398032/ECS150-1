@@ -215,6 +215,7 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	thread->priority = prio;
 	thread->state = VM_THREAD_STATE_DEAD;
 	thread->base = new uint8_t[thread->memsize];
+	MachineContextCreate(&(thread->context), *(thread->entry), thread->params, thread->base, thread->memsize); 		
 	all[thread->id] = thread;//added to map 	
 	cout << "memsize from app " << memsize << endl;
 	cout << "check map: " << " prio " << all[*tid]->priority << " memsize " << all[*tid]->memsize << endl;
