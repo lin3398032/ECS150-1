@@ -190,7 +190,7 @@ void AlarmCallback(void *param){
 		else { 
 			(*itr)->state = VM_THREAD_STATE_READY;
 			Ready((*itr)->id); //put into a ready queue
-			schedule();
+			schedule();//scheldule another queue
 		}
 		
 	}
@@ -203,8 +203,8 @@ TVMStatus VMThreadSleep(TVMTick tick){
 	all[current]->state = VM_THREAD_STATE_WAITING;
 	sleeping.push_back(all[current]); //a function that looks through threads and adds them to the sleep queue
 	cout << "put thread  " << current << " to sleep with " << tick << " ticks"<< endl;
-	//schedule();
-	 MachineResumeSignals(&oldstate);
+	schedule();
+	MachineResumeSignals(&oldstate);
 	return(VM_STATUS_SUCCESS);
 }
 
@@ -247,7 +247,7 @@ TVMStatus VMThreadActivate(TVMThreadID thread){
 	cout << "activated thread: " << thread << " with a state of " << all[thread]->state << endl;   
 	Ready(thread);//put into a ready queue 
 	schedule(); 	
-	 MachineResumeSignals(&oldstate);
+	MachineResumeSignals(&oldstate);
 	return VM_STATUS_SUCCESS;
 
 }
