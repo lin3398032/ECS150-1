@@ -117,6 +117,7 @@ void schedule(){
 	else{
 
 		cout << "no threads found need to switch to idle!" << endl;
+		MachineResumeSignals(&oldstate);
 		MachineContextSwitch(&all[current]->context, &all[idle]->context);
 		cout << "context switched" << endl;
 		current = idle;
@@ -143,6 +144,8 @@ void Ready(TVMThreadID thread){
 
 TVMStatus VMTerminate(TVMThreadID thread)
 {  
+	TMachineSignalState oldstate;
+	MachineSuspendSignals(&oldstate);
 	all[thread]->state = VM_THREAD_STATE_DEAD;
 	//check through the ready queues 
 	list<tcb*>::iterator itr; 
@@ -152,6 +155,7 @@ TVMStatus VMTerminate(TVMThreadID thread)
 	}
 	schedule(); 
 	//need one for low and normal and error checking according to specs
+	 MachineResumeSignals(&oldstate);
 	return(VM_STATUS_SUCCESS);
 }
 TVMStatus VMThreadDelete(TVMThreadID thread){
@@ -182,11 +186,14 @@ void AlarmCallback(void *param){
 }
 
 TVMStatus VMThreadSleep(TVMTick tick){
+	TMachineSignalState oldstate;
+	MachineSuspendSignals(&oldstate);
 	all[current]->ticks = tick;//possibly have to multiply by 1000
 	all[current]->state = VM_THREAD_STATE_WAITING;
 	sleeping.push_back(all[current]); //a function that looks through threads and adds them to the sleep queue
 	cout << "put thread  " << current << " to sleep with " << tick << " ticks"<< endl;
 	//schedule();
+	 MachineResumeSignals(&oldstate);
 	return(VM_STATUS_SUCCESS);
 }
 
@@ -199,19 +206,22 @@ TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsize, TVMThreadPriority prio, TVMThreadIDRef tid){
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
-	tcb thread;
+	tcb *thread = new tcb;
 	*tid = all.size();
-	thread.id = all.size();
-	thread.entry  = entry;
-	thread.params = param;
-	thread.memsize = memsize;
-	thread.priority = prio;
-	thread.state = VM_THREAD_STATE_DEAD;
-	thread.base = new uint8_t[thread.memsize];
-	all[thread.id] = &thread;//added to map 	
+	thread->id = all.size();
+	thread->entry  = entry;
+	thread->params = param;
+	thread->memsize = memsize;
+	thread->priority = prio;
+	thread->state = VM_THREAD_STATE_DEAD;
+	thread->base = new uint8_t[thread->memsize];
+	all[thread->id] = &thread;//added to map 	
 	cout << "memsize from app " << memsize << endl;
 	cout << "check map: " << " prio " << all[*tid]->priority << " memsize " << all[*tid]->memsize << endl;
-	cout << "thread created "<< all[*tid]->id << " returning tid " << *tid  << " from  "  <<  thread.id  << " with thread state " << all[*tid]->state << endl;  	
+	cout << "thread created "<< all[*tid]->id << " returning tid " << *tid  << " from  "  <<  thread->id  << " with thread state " << all[*tid]->state << endl;
+	//need to create context
+	
+  	MachineResumeSignals(&oldstate);
 	return VM_STATUS_SUCCESS;
 	
 }
@@ -225,6 +235,7 @@ TVMStatus VMThreadActivate(TVMThreadID thread){
 	cout << "activated thread: " << thread << " with a state of " << all[thread]->state << endl;   
 	Ready(thread);//put into a ready queue 
 	schedule(); 	
+	 MachineResumeSignals(&oldstate);
 	return VM_STATUS_SUCCESS;
 
 }
