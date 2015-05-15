@@ -76,7 +76,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	tidle->memsize = 70000;
         tidle->base = new uint8_t[tidle->memsize];
 	tidle->entry = idleFun;
-        MachineContextCreate(&(tidle->context), *(tidle->entry), NULL, tidle->base, tidle->memsize); 		
+        MachineContextCreate(&(tidle->context), *Skeleton, NULL, tidle->base, tidle->memsize); 		
 	all[tidle->id] = (tidle);
 	idle = tidle->id;
 	cout << "idle is " << idle << endl; 
@@ -95,7 +95,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
   	return(VM_STATUS_SUCCESS);
 }
 
-void idleFun(void*){ MachineEnableSignals();  while(1){  cout << "idle" << endl; } }
+void idleFun(void*){  while(1){  cout << "idle" << endl; } }
 void schedule(){
 	cout << "scheduler" << endl;
 	cout << "current thread id: " << current << endl; 	
