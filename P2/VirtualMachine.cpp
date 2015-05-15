@@ -107,13 +107,39 @@ void schedule(){
 			MachineResumeSignals(&oldstate); 
 			return;
 	 	} else {
-			tcb tmp =*(high.front()); 
-			cout << "high priority needs to switch from " << current << " high size is " << high.size() << " total threads are  " << all.size()  << endl;
-			cout << "high front id " << tmp.id << endl;
-			MachineContextSwitch(&all[current]->context, &all[high.front()->id]->context);
-			current = tmp.id; 
-			//high.erase(high.begin());
-			cout << "new current id: " << current << endl;
+			cout << "context switched to high!" << endl;
+			tcb tmp =(high.front())->id;
+			TVMThreadID prev = current;
+			current = tmp; 
+			MachineContextSwitch(&all[prev]->context, &all[current]->context);
+		}
+	}
+
+	else if(!normal.empty()){
+		if(current == (normal.front())->id){
+			cout << "current already schelduled" << endl;	
+			MachineResumeSignals(&oldstate); 
+			return;
+	 	} else {
+			cout << "context switched to normal!" << endl;
+			tcb tmp =(normal.front())->id;
+			TVMThreadID prev = current;
+			current = tmp; 
+			MachineContextSwitch(&all[prev]->context, &all[current]->context);
+		}
+	}
+
+	else if(!low.empty()){
+		if(current == (low.front())->id){
+			cout << "current already schelduled" << endl;	
+			MachineResumeSignals(&oldstate); 
+			return;
+	 	} else {
+			cout << "context switched to low!" << endl;
+			tcb tmp =(low.front())->id;
+			TVMThreadID prev = current;
+			current = tmp; 
+			MachineContextSwitch(&all[prev]->context, &all[current]->context);
 		}
 	}
 	else{
