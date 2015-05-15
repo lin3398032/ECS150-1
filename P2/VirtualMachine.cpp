@@ -66,7 +66,8 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	primary->priority = VM_THREAD_PRIORITY_NORMAL;
 	primary->state = VM_THREAD_STATE_RUNNING;
 	all[primary->id] = (primary);
-	current = primary->id;		
+	current = primary->id;	
+	cout << "current is  " << current << endl; 	
 //primary thread doesnt need a context 
 	tcb* tidle = new tcb;	
 	tidle->id = all.size();		
@@ -78,6 +79,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
         MachineContextCreate(&(tidle->context), *(tidle->entry), NULL, tidle->base, tidle->memsize); 		
 	all[tidle->id] = (tidle);
 	idle = tidle->id;
+	cout << "idle is " << idle << endl; 
 	MachineInitialize(machinetickms);
 	MachineRequestAlarm(machinetickms, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
         MachineEnableSignals();
@@ -117,10 +119,11 @@ void schedule(){
 	else{
 
 		cout << "no threads found need to switch to idle!" << endl;
-		TVMThreadID tmp = current;
-		current =idle; 
-		MachineResumeSignals(&oldstate);
-		MachineContextSwitch(&all[tmp]->context, &all[current]->context);
+		TVMThreadID prev = current;
+		cout << "prev " << prev << endl;
+		current = idle; 
+		cout << current << endl;
+	//	MachineContextSwitch(&all[prev]->context, &all[current]->context);
 		cout << "context switched" << endl;
 	}
 
@@ -170,7 +173,7 @@ void Skeleton(void* params){
 	MachineEnableSignals(); 
 	all[current]->entry(params);
 	VMTerminate(all[current]->id);
-	
+	return;	
 }  
 void AlarmCallback(void *param){
 	vector<tcb*>::iterator itr; 
