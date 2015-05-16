@@ -171,7 +171,7 @@ TVMStatus VMTerminate(TVMThreadID thread)
 			(*itr)->state = VM_THREAD_STATE_DEAD;
 			high.remove((*itr));
 			cout << " removed " << endl;
-	
+			break;
 	 		
 		}
 	}}
@@ -182,7 +182,7 @@ TVMStatus VMTerminate(TVMThreadID thread)
 			(*itr)->state = VM_THREAD_STATE_DEAD;
 			normal.remove((*itr));
 			cout << " removed " << endl;
- 		
+ 			break;
 		}
 	}}
 	if(!low.empty()){
@@ -192,14 +192,20 @@ TVMStatus VMTerminate(TVMThreadID thread)
 			(*itr)->state = VM_THREAD_STATE_DEAD;
 			low.remove((*itr));
 			cout << " removed " << endl;
+			break;
 		}
 	}}
-	cout << " terminated " << endl; 
+//	cout << " terminated " << endl; 
 	all[thread]->state = VM_THREAD_STATE_DEAD;
 	schedule();
+	VMThreadDelete(thread);
 	//need one for low and normal and error checking according to specs
 	 MachineResumeSignals(&oldstate);
-	return(VM_STATUS_SUCCESS);
+	
+
+	if(all[thread]->id == NULL) {return VM_STATUS_ERROR_INVALID_ID;}
+	else if(all[thread]->state != VM_THREAD_STATE_DEAD){return VM_STATUS_ERROR_INVALID_STATE;}
+	else{return VM_STATUS_SUCCESS;}
 }
 TVMStatus VMThreadDelete(TVMThreadID thread){
 	map<TVMThreadID, tcb*>::iterator itr;
@@ -249,10 +255,7 @@ TVMStatus VMThreadSleep(TVMTick tick){
 }
 
 
-TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
-	write(filedescriptor, data, *length);
-	return(VM_STATUS_SUCCESS);
-}
+
 //check flow chart
 TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsize, TVMThreadPriority prio, TVMThreadIDRef tid){
 	TMachineSignalState oldstate;
@@ -288,10 +291,11 @@ TVMStatus VMThreadActivate(TVMThreadID thread){
 	all[thread]->state = VM_THREAD_STATE_READY;
 	//cout << "activated thread: " << thread << " with a state of " << all[thread]->state << endl;   
 	Ready(thread);//put into a ready queue 
-	schedule(); 	
+	//schedule(); 	
 	MachineResumeSignals(&oldstate);
-	return VM_STATUS_SUCCESS;
-
+	if(all[thread]->id == NULL) {return VM_STATUS_ERROR_INVALID_ID;}
+	else if(all[thread]->state != VM_THREAD_STATE_DEAD){return VM_STATUS_ERROR_INVALID_STATE;}
+	else{return VM_STATUS_SUCCESS;}
 }
 
 TVMStatus VMThreadState(TVMThreadID thread, TVMThreadStateRef stateref)
@@ -307,6 +311,52 @@ TVMStatus VMThreadState(TVMThreadID thread, TVMThreadStateRef stateref)
 		}
 	}
 
-	return(VM_STATUS_SUCCESS);
+	if(all[thread]->id == NULL){return VM_STATUS_ERROR_INVALID_ID;}
+	else if(stateref == NULL){return VM_STATUS_ERROR_INVALID_PARAMETER;}
+	else {return VM_STATUS_SUCCESS;}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void MachineCallBack(void *calldata, int result){
+	Ready(calldata)
+
+}
+
+//number of bytes is length
+//@ location specificed by data
+//to file specified by fd
+//number of bytes returned will be placed into results when callback fct is called
+//calldata will be passed into callback fct
+/*
+1. do all necessary checking specified in the PDF (the returns except for success and failure)
+2. SuspendSignal
+3. Call MachineFileWrite
+4. set current thread state to waiting
+5. call schedule
+6. xxxxxx
+7. xxxxxxxx
+void MachineFileWrite(int fd, void *data, int length, TMachineFileCallback callback, void *calldata){
+*/
+TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
+	TMachineSignalState oldstate;
+
+	if(data == NULL || length == NULL){
+		return VM_STATUS_ERROR_INVALID_PARAMETER;	
+	}	
+	else if(length == -1){
+		return VM_STATUS_FAILURE;	
+	}
+	else{
+		MachineSuspendSignals(&oldstate);
+		MachineFileWrite(filedescriptor, *data, *length, MachineCallBack, current); 
+		all[current]->state = VM_THREAD_STATE_WAITING
+		schedule();
+
+	}
+	
+	
+
 }
 
