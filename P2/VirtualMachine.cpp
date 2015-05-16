@@ -101,12 +101,7 @@ void schedule(){
 	//cout << "current thread id: " << current << endl; 	
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
-	if(!high.empty()){
-		if(current == (high.front())->id && (high.front())->state != VM_THREAD_STATE_WAITING){
-			cout << "current already schelduled" << endl;	
-			MachineResumeSignals(&oldstate); 
-			return;
-	 	} else {
+	if(!high.empty() && high.front()->id != current && (high.front())->state != VM_THREAD_STATE_WAITING){
 			//cout << "context switched to high!" << endl;
 			(high.front())->state = VM_THREAD_STATE_RUNNING;
 			TVMThreadID tmp =(high.front())->id;
@@ -114,8 +109,8 @@ void schedule(){
 			current = tmp;	
 			MachineContextSwitch(&all[prev]->context, &all[current]->context);
 
-		}
 	}
+	
 
 	else if(!normal.empty() && normal.front()->id != current && (normal.front())->state != VM_THREAD_STATE_WAITING){
 			if((normal.front())->state == VM_THREAD_STATE_DEAD){ cout << "its dead " << (normal.front())->id << endl; }
@@ -128,19 +123,14 @@ void schedule(){
 		
 	}
 
-	else if(!low.empty()){
-		if(current == (low.front())->id && (low.front())->state != VM_THREAD_STATE_WAITING){
-			cout << "current already schelduled" << endl;	
-			MachineResumeSignals(&oldstate); 
-			return;
-	 	} else {
+	else if(!low.empty() && low.front()->id != current && (low.front())->state != VM_THREAD_STATE_WAITING){
 			//cout << "context switched to low!" << endl;
 			(low.front())->state = VM_THREAD_STATE_RUNNING;
 			TVMThreadID tmp =(low.front())->id;
 			TVMThreadID prev = current;
 			current = tmp; 
 			MachineContextSwitch(&all[prev]->context, &all[current]->context);
-		}
+	
 	}
 	else{
 
@@ -151,7 +141,6 @@ void schedule(){
 	//	cout << "context switched" << endl;
 	}
 
-	
 	MachineResumeSignals(&oldstate);
 	return;
 
