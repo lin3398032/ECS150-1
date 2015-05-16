@@ -101,7 +101,7 @@ void schedule(){
 	//cout << "current thread id: " << current << endl; 	
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
-	if(!high.empty() && high.front()->id != current && (high.front())->state != VM_THREAD_STATE_WAITING){
+	if(!high.empty() && high.front()->id != current && (high.front())->state != VM_THREAD_STATE_WAITING && (high.front())->state != VM_THREAD_STATE_DEAD){
 			//cout << "context switched to high!" << endl;
 			(high.front())->state = VM_THREAD_STATE_RUNNING;
 			TVMThreadID tmp =(high.front())->id;
@@ -112,7 +112,7 @@ void schedule(){
 	}
 	
 
-	else if(!normal.empty() && normal.front()->id != current && (normal.front())->state != VM_THREAD_STATE_WAITING){
+	else if(!normal.empty() && normal.front()->id != current && (normal.front())->state != VM_THREAD_STATE_WAITING && (normal.front())->state != VM_THREAD_STATE_DEAD){
 			if((normal.front())->state == VM_THREAD_STATE_DEAD){ cout << "its dead " << (normal.front())->id << endl; }
 			(normal.front())->state = VM_THREAD_STATE_RUNNING;
 			//cout << current <<" context switched to normal! " << (normal.front())->id << endl;
@@ -123,7 +123,7 @@ void schedule(){
 		
 	}
 
-	else if(!low.empty() && low.front()->id != current && (low.front())->state != VM_THREAD_STATE_WAITING){
+	else if(!low.empty() && low.front()->id != current && (low.front())->state != VM_THREAD_STATE_WAITING && (low.front())->state != VM_THREAD_STATE_DEAD){
 			//cout << "context switched to low!" << endl;
 			(low.front())->state = VM_THREAD_STATE_RUNNING;
 			TVMThreadID tmp =(low.front())->id;
