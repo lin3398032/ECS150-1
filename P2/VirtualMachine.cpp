@@ -175,16 +175,19 @@ TVMStatus VMTerminate(TVMThreadID thread)
 	 		
 		}
 	}}
-	if(!normal.empty()){
-	for(itr = normal.begin(); itr != normal.end(); ++itr){
+	itr = normal.begin(); 
+	while(itr!=normal.end() && !normal.empty()){	
 		if((*itr)->id == thread && (*itr)->state != VM_THREAD_STATE_DEAD){
+	
 			cout << "going to remove " << (*itr)->id << endl;
-			(*itr)->state = VM_THREAD_STATE_DEAD;
+			all[(*itr)->id]->state = VM_THREAD_STATE_DEAD;
 			normal.remove((*itr));
 			cout << " removed " << endl;
- 		
+		} else {
+			itr++;
 		}
-	}}
+	}
+ 		
 	if(!low.empty()){
 	for(itr = low.begin(); itr != low.end(); ++itr){
 		if((*itr)->id == thread && (*itr)->state != VM_THREAD_STATE_DEAD){
