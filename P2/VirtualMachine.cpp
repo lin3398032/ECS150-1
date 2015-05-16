@@ -316,47 +316,35 @@ TVMStatus VMThreadState(TVMThreadID thread, TVMThreadStateRef stateref)
 	else {return VM_STATUS_SUCCESS;}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////MachineFileWrite//////////////////////////////////////////////////////////////////////////
 
 
-void MachineCallBack(void *calldata, int result){
-	Ready(calldata)
-
-}
-
-//number of bytes is length
-//@ location specificed by data
-//to file specified by fd
-//number of bytes returned will be placed into results when callback fct is called
-//calldata will be passed into callback fct
-/*
-1. do all necessary checking specified in the PDF (the returns except for success and failure)
-2. SuspendSignal
-3. Call MachineFileWrite
-4. set current thread state to waiting
-5. call schedule
-6. xxxxxx
-7. xxxxxxxx
-void MachineFileWrite(int fd, void *data, int length, TMachineFileCallback callback, void *calldata){
-*/
 TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 	TMachineSignalState oldstate;
 
 	if(data == NULL || length == NULL){
 		return VM_STATUS_ERROR_INVALID_PARAMETER;	
 	}	
-	else if(length == -1){
+	else if(*length == -1){
 		return VM_STATUS_FAILURE;	
 	}
 	else{
 		MachineSuspendSignals(&oldstate);
-		MachineFileWrite(filedescriptor, *data, *length, MachineCallBack, current); 
-		all[current]->state = VM_THREAD_STATE_WAITING
+		MachineFileWrite(filedescriptor, data, *length,MachineCallBack(current,),current); 
+		all[current]->state = VM_THREAD_STATE_WAITING;
 		schedule();
-
+		if(all[current]->storeResult < 0){
+			*length = 0;
+			return VM_STATUS_FAILURE;		
+		}
+		else{
+			*length = all[current]->storeResult;
+			return VM_STATUS_SUCCESS;	
+		}
 	}
-	
-	
-
 }
 
+void MachineCallBack(void *calldata, int result){
+	Ready(current);
+	all[current]->storeResult = result;
+}
