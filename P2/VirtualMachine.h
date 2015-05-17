@@ -28,6 +28,11 @@ extern "C" {
 #define VM_TIMEOUT_INFINITE                     ((TVMTick)0)
 #define VM_TIMEOUT_IMMEDIATE                    ((TVMTick)-1)
 
+typedef unsigned int TVMMemoryPoolID, *TVMMemoryPoolIDRef;
+
+extern const TVMMemoryPoolID VM_MEMORY_POOL_ID_SYSTEM;
+#define VM_MEMORY_POOL_ID_INVALID               ((TVMMemoryPoolID)-1)
+
 typedef unsigned int TVMMemorySize, *TVMMemorySizeRef;
 typedef unsigned int TVMStatus, *TVMStatusRef;
 typedef unsigned int TVMTick, *TVMTickRef;
@@ -65,9 +70,17 @@ TVMStatus VMFileWrite(int filedescriptor, void *data, int *length);
 TVMStatus VMFileSeek(int filedescriptor, int offset, int whence, int *newoffset);
 TVMStatus VMFilePrint(int filedescriptor, const char *format, ...);
 
+
+TVMStatus VMMemoryPoolCreate(void *base, TVMMemorySize size, TVMMemoryPoolIDRef memory);
+TVMStatus VMMemoryPoolDelete(TVMMemoryPoolID memory);
+TVMStatus VMMemoryPoolQuery(TVMMemoryPoolID memory, TVMMemorySizeRef bytesleft);
+TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void **pointer);
+TVMStatus VMMemoryPoolDeallocate(TVMMemoryPoolID memory, void *pointer);  
+
+
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
