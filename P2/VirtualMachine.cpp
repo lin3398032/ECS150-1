@@ -19,7 +19,7 @@ extern "C"{
 	void MachineInitialize(int timeout);
 	void MachineRequestAlarm(useconds_t usec, TMachineAlarmCallback callback, void *calldata);
 	void MachineEnableSignals(void);
-
+	const TVMMemoryPoolID VM_MEMORY_POOL_ID_SYSTEM = 0;
 }
 class tcb{
 	public: 
@@ -45,7 +45,7 @@ class mainMP {
 //create list for allocated space and free space
 list<mainMP> freeSpace; //
 list<mainMP> allocatedSpace; //
-
+vector<mainMP> allMem;
 TVMThreadID current; // ptr to the current thread
 TVMThreadID idle; //idle thread 
 map<TVMThreadID, tcb*> all;
@@ -76,10 +76,13 @@ void schedule(void);
 
 TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 {
-
+	mainMP sysMem;
 	TVMMemorySize sharedsize;
-	base = new uint8_t[heapsize]; //creating pointer to the system memory pool
-
+	uint8_t* base = new uint8_t[heapsize]; //creating pointer to the system memory pool
+	sysMem.base = base;
+	sysMem.size = heapsize;
+	allMem.push_back(sysMem); //create and push main system memory?
+	//VMMemoryPoolCreate(base, heapsize, )   //creating the system memory pool
 	tcb* primary = new tcb;
 	primary->id = all.size(); 
 	primary->priority = VM_THREAD_PRIORITY_NORMAL;
@@ -129,13 +132,13 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 	if(pointer == NULL || size == 0 || memory < 0){
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	}
-	else if (memory > heapsize || s){
+	else if (size > heapsize){
 		return VM_STATUS_ERROR_INSUFFICIENT_RESOURCES;
 	}
 
 	else{
 		allocatedSize = (size + 63) & (~63); //rounds up size to next multiple 64 byte
-		*pointer = allocatedSize; //assigned allocate size to pointer
+		*pointer = &(allocatedSize); //assigned allocate size to pointer
 		return VM_STATUS_SUCCESS;
 	}
 
@@ -153,9 +156,8 @@ TVMStatus VMMemoryPoolCreate(void *base, TVMMemorySize size, TVMMemoryPoolIDRef 
 
 }
 
-void idleFun(void*){  
-	while(1){} 
-}
+void idleFun(void*){ while(1){} }
+
 //begin returns iterator
 //front value of begin
 //erase takes iterator
