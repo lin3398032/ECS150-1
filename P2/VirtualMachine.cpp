@@ -33,8 +33,19 @@ class tcb{
 	TVMMutexID mid;
 	TVMThreadEntry entry; //entry function need to make a skeleton wrapper for it
 	SMachineContext context; 
+	int storeResult;
 	
 };
+//this will be attributes of the memory pool
+class mainMP {
+	public:
+	uint8_t *base; 
+	TVMMemorySize size;
+};
+//create list for allocated space and free space
+list<mainMP> freeSpace; //
+list<mainMP> allocatedSpace; //
+
 TVMThreadID current; // ptr to the current thread
 TVMThreadID idle; //idle thread 
 map<TVMThreadID, tcb*> all;
@@ -46,6 +57,11 @@ list<tcb*> low;
 //sleeping thread queue
 vector<tcb*> sleeping;
 //mutex thread queue
+
+TVMMemorySize heapsize; //how large the system memory pool is
+//base is just pointer to system memory pool
+
+
 
 
 // The scheduler is responsible for determining what is the highest priority and therefore what should be running
@@ -60,7 +76,10 @@ void schedule(void);
 
 TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 {
-	
+
+	TVMMemorySize sharedsize;
+	base = new uint8_t[heapsize]; //creating pointer to the system memory pool
+
 	tcb* primary = new tcb;
 	primary->id = all.size(); 
 	primary->priority = VM_THREAD_PRIORITY_NORMAL;
@@ -76,7 +95,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	tidle->memsize = 1000000;
         tidle->base = new uint8_t[tidle->memsize];
 	tidle->entry = idleFun;
-        MachineContextCreate(&(tidle->context), *Skeleton, NULL, tidle->base, tidle->memsize); 		
+        MachineContextCreate(&(tidle->context), Skeleton, NULL, tidle->base, tidle->memsize); //function is pointer		
 	all[tidle->id] = (tidle);
 	idle = tidle->id;
 	//cout << "idle is " << idle << endl; 
@@ -87,15 +106,59 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 
 	TVMMainEntry vmmain; //creates a function pointer
 	vmmain = VMLoadModule(argv[0]); //set function pointer to point to this function
-	if(vmmain == NULL)//check if vmmain is pointing to the address of VMLoadModule 
- 		cout<< "is  null!" << endl;
-	else
+	if(vmmain == NULL){//check if vmmain is pointing to the address of VMLoadModule 
+ 		return VM_STATUS_FAILURE;
+	}
+	else {
 		vmmain(argc, argv);//run the function it points to, in a way it derefences it
+		return(VM_STATUS_SUCCESS);
+	}
+}
+//first step to initialize memory pool
+//allocated_size = (size + 63) & (~63);
 
-  	return(VM_STATUS_SUCCESS);
+//TVMMemoryPoolID => essentially an int 
+//need to keep track of free memory(the size) and its base as well as allocated memory(the size) and its base 
+//need to keep updating base as you allocated space (i.e. shift base by doing base += allocatedSize)
+//that means that the size of the free memory is heapsize - allocatedSize 
+//if a free space opens up between two filled spaces (i.e. |Allocated|Free(1)|Allocated|Free|Free|Free|) need to store Free(1) 
+//if |Allocated|Free(1)|Free(2)|Allocated|Free|Free| need to merge Free(1) and Free(2) to make it one big free
+//all should be done in VMMemoryPoolAllocate!
+TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void **pointer){
+	unsigned int allocatedSize = 0;
+	if(pointer == NULL || size == 0 || memory < 0){
+		return VM_STATUS_ERROR_INVALID_PARAMETER;
+	}
+	else if (memory > heapsize || s){
+		return VM_STATUS_ERROR_INSUFFICIENT_RESOURCES;
+	}
+
+	else{
+		allocatedSize = (size + 63) & (~63); //rounds up size to next multiple 64 byte
+		*pointer = allocatedSize; //assigned allocate size to pointer
+		return VM_STATUS_SUCCESS;
+	}
+
+
 }
 
-void idleFun(void*){  while(1){} }
+TVMStatus VMMemoryPoolCreate(void *base, TVMMemorySize size, TVMMemoryPoolIDRef memory){
+	if(base == NULL || memory == NULL || size == 0){
+		return VM_STATUS_ERROR_INVALID_PARAMETER;
+	}
+	else{
+		return VM_STATUS_SUCCESS;
+	}
+
+
+}
+
+void idleFun(void*){  
+	while(1){} 
+}
+//begin returns iterator
+//front value of begin
+//erase takes iterator
 void schedule(){
 	//cout << "scheduler" << endl;
 	//cout << "current thread id: " << current << endl; 	
@@ -105,6 +168,7 @@ void schedule(){
 			//cout << "context switched to high!" << endl;
 			(high.front())->state = VM_THREAD_STATE_RUNNING;
 			TVMThreadID tmp =(high.front())->id;
+			high.erase(high.begin());
 			TVMThreadID prev = current;
 			current = tmp;	
 			MachineContextSwitch(&all[prev]->context, &all[current]->context);
@@ -117,6 +181,7 @@ void schedule(){
 			(normal.front())->state = VM_THREAD_STATE_RUNNING;
 			//cout << current <<" context switched to normal! " << (normal.front())->id << endl;
 			TVMThreadID tmp =(normal.front())->id;
+			normal.erase(normal.begin());
 			TVMThreadID prev = current;
 			current = tmp;
 			MachineContextSwitch(&all[prev]->context, &all[current]->context);
@@ -126,7 +191,9 @@ void schedule(){
 	else if(!low.empty() && low.front()->id != current && (low.front())->state != VM_THREAD_STATE_WAITING && (low.front())->state != VM_THREAD_STATE_DEAD){
 			//cout << "context switched to low!" << endl;
 			(low.front())->state = VM_THREAD_STATE_RUNNING;
+
 			TVMThreadID tmp =(low.front())->id;
+			low.erase(low.begin());
 			TVMThreadID prev = current;
 			current = tmp; 
 			MachineContextSwitch(&all[prev]->context, &all[current]->context);
@@ -134,7 +201,7 @@ void schedule(){
 	}
 	else{
 
-	//	cout << "no threads found need to switch to idle!" << endl;
+		///cout << "no threads found need to switch to idle!" << endl;
 		TVMThreadID prev = current;
 		current = idle; 
 		MachineContextSwitch(&all[prev]->context, &all[current]->context);
@@ -145,16 +212,16 @@ void schedule(){
 	return;
 
 }
+
 void Ready(TVMThreadID thread){
-	cout << "ready the thread: " << thread << " with thread priority " << all[thread]->priority << endl;	
+	//cout << "ready the thread: " << thread << " with thread priority " << all[thread]->priority << endl;
+	all[thread]->state = VM_THREAD_STATE_READY;
+	//cout << "this is normal size " << normal.size() << endl;	
 	switch(all[thread]->priority){
 		case VM_THREAD_PRIORITY_LOW: low.push_back(all[thread]); return;
 		case VM_THREAD_PRIORITY_NORMAL: normal.push_back(all[thread]); return;
 		case VM_THREAD_PRIORITY_HIGH: high.push_back(all[thread]); return;		
 	} 
-	return;	
-
-
 } //pushes into a queue based on priority
 
 TVMStatus VMTerminate(TVMThreadID thread)
@@ -167,77 +234,92 @@ TVMStatus VMTerminate(TVMThreadID thread)
 	if(!high.empty()){  
 	for(itr = high.begin(); itr != high.end(); ++itr){
 		if((*itr)->id == thread && (*itr)->state != VM_THREAD_STATE_DEAD){
-			cout << "going to remove " << (*itr)->id << endl;
+			//cout << "going to remove " << (*itr)->id << endl;
 			(*itr)->state = VM_THREAD_STATE_DEAD;
 			high.remove((*itr));
-			cout << " removed " << endl;
-	
+			//cout << " removed high " << endl;
+			break;
 	 		
-		}
-	}}
-	itr = normal.begin(); 
-	while(itr!=normal.end() && !normal.empty()){	
-		if((*itr)->id == thread && (*itr)->state != VM_THREAD_STATE_DEAD){
-	
-			cout << "going to remove " << (*itr)->id << endl;
-			all[(*itr)->id]->state = VM_THREAD_STATE_DEAD;
-			normal.remove((*itr));
-			cout << " removed " << endl;
-		} else {
-			itr++;
+			}
 		}
 	}
- 		
+	if(!normal.empty()){
+	for(itr = normal.begin(); itr != normal.end(); ++itr){
+		if((*itr)->id == thread && (*itr)->state != VM_THREAD_STATE_DEAD){
+			//cout << "going to remove " << (*itr)->id << endl;
+			(*itr)->state = VM_THREAD_STATE_DEAD;
+			normal.remove((*itr));
+			//cout << " removed normal" << endl;
+ 			break;
+			}
+		}
+	}
+
+	//cout << "between normal and low " << endl;
 	if(!low.empty()){
 	for(itr = low.begin(); itr != low.end(); ++itr){
 		if((*itr)->id == thread && (*itr)->state != VM_THREAD_STATE_DEAD){
-			cout << "going to remove " << (*itr)->id << endl;
+			//cout << "going to remove " << (*itr)->id << endl;
 			(*itr)->state = VM_THREAD_STATE_DEAD;
 			low.remove((*itr));
-			cout << " removed " << endl;
+			//cout << " removed low" << endl;
+			break;
 		}
 	}}
-	cout << " terminated " << endl; 
+	//cout << " terminated " << endl; 
 	all[thread]->state = VM_THREAD_STATE_DEAD;
 	schedule();
+	VMThreadDelete(thread);
 	//need one for low and normal and error checking according to specs
 	 MachineResumeSignals(&oldstate);
-	return(VM_STATUS_SUCCESS);
+	
+
+	if(all[thread]->id == 0) {return VM_STATUS_ERROR_INVALID_ID;}
+	else if(all[thread]->state != VM_THREAD_STATE_DEAD){return VM_STATUS_ERROR_INVALID_STATE;}
+	else{return VM_STATUS_SUCCESS;}
+
+
 }
 TVMStatus VMThreadDelete(TVMThreadID thread){
 	map<TVMThreadID, tcb*>::iterator itr;
-	for(itr = all.begin(); itr != all.end(); itr++){
-		if(all[itr->first]->state != VM_THREAD_STATE_DEAD){
-			cout << "Delete " << itr->first << endl;
-			all.erase(itr);
-			}
+	//map<TVMThreadID, tcb*>temp;
+
+	if(all[thread]->id == 0) {return VM_STATUS_ERROR_INVALID_ID;}
+	else if(all[thread]->state != VM_THREAD_STATE_DEAD){return VM_STATUS_ERROR_INVALID_STATE;}
+	else{
+		schedule();
+		all.erase(current);		
+
+		return VM_STATUS_SUCCESS;
 	}
-	
-	return(VM_STATUS_SUCCESS);
+
 
 }
 void Skeleton(void* params){
 	MachineEnableSignals(); 
 	all[current]->entry(all[current]->params);
 	VMTerminate(all[current]->id);
-	cout << "end of skeleton" << endl;
+	//cout << "end of skeleton" << endl;
 }  
 void AlarmCallback(void *param){
 	vector<tcb*>::iterator itr;
 	itr = sleeping.begin(); 
 	while(itr != sleeping.end())
 	{	
-	//	cout << "ticks left " << (*itr)->ticks << endl; 
+		//cout << "ticks left " << (*itr)->ticks << endl; 
 		(*itr)->ticks--;
 		if((*itr)->ticks == 0) { 
 	//		cout << "tock" << endl;
 			(*itr)->state = VM_THREAD_STATE_READY;
 			Ready((*itr)->id); //put into a ready queue
 			sleeping.erase(itr);
+			break;
 		} else { itr++; } 
 		
 	}
+	//cout << "trying to schedule now" << endl;
 	schedule();
+	//cout << "this coming here" << endl;
 }
 
 TVMStatus VMThreadSleep(TVMTick tick){
@@ -251,11 +333,126 @@ TVMStatus VMThreadSleep(TVMTick tick){
 	return(VM_STATUS_SUCCESS);
 }
 
+void MachineCallBack(void *calldata, int result);
+//-1 means file wasn't written to and an error
 
 TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
-	write(filedescriptor, data, *length);
-	return(VM_STATUS_SUCCESS);
+	TMachineSignalState oldstate;
+	//cout << "This is beginning of VMFileWrite" << endl;
+	//cout << current << "this is current" << endl;
+	if(data == 0 || *length == 0){
+		return VM_STATUS_ERROR_INVALID_PARAMETER;	
+	}	
+	else{
+		MachineSuspendSignals(&oldstate);
+		MachineFileWrite(filedescriptor, data, *length,MachineCallBack,(void*)current); //only thing the changes 
+		all[current]->state = VM_THREAD_STATE_WAITING;
+		schedule();
+		*length = all[current]->storeResult;
+		if(*length < 0){
+			return VM_STATUS_FAILURE;		
+		}
+		else{
+			return VM_STATUS_SUCCESS;	
+		}
+	}
+
+	//cout << "THis is the end of VMFILewrite " << endl;
 }
+
+TVMStatus VMFileRead(int filedescriptor, void *data, int *length){
+	TMachineSignalState oldstate;
+
+	if((void*)data == NULL || *length == 0){
+		return VM_STATUS_ERROR_INVALID_PARAMETER;	
+	}	
+	else{
+		MachineSuspendSignals(&oldstate);
+		MachineFileRead(filedescriptor, data, *length,MachineCallBack,(void*)current); //only thing the changes 
+		all[current]->state = VM_THREAD_STATE_WAITING;
+		schedule();
+		*length = all[current]->storeResult;
+		if(*length < 0){
+			return VM_STATUS_FAILURE;		
+		}
+		else{
+			return VM_STATUS_SUCCESS;	
+		}
+	}
+
+}
+
+TVMStatus VMFileClose(int filedescriptor){
+	TMachineSignalState oldstate;
+
+	MachineSuspendSignals(&oldstate);
+	MachineFileClose(filedescriptor,MachineCallBack,(void*)current); //only thing the changes 
+	all[current]->state = VM_THREAD_STATE_WAITING;
+	schedule();
+	//*length = all[current]->storeResult;
+	if(all[current]->storeResult < 0){
+		return VM_STATUS_FAILURE;		
+	}
+	else{
+		return VM_STATUS_SUCCESS;	
+	}
+}
+
+
+TVMStatus VMFileSeek(int filedescriptor, int offset, int whence, int *newoffset){
+	TMachineSignalState oldstate;
+
+	MachineSuspendSignals(&oldstate);
+	MachineFileSeek(filedescriptor, offset, whence,MachineCallBack,(void*)current); //only thing the changes 
+	all[current]->state = VM_THREAD_STATE_WAITING;
+	schedule();
+	*newoffset = all[current]->storeResult;
+	if(*newoffset < 0){
+		return VM_STATUS_FAILURE;		
+	}
+	else{
+		return VM_STATUS_SUCCESS;	
+	}
+
+}
+
+TVMStatus VMFileOpen(const char *filename, int flags, int mode, int *filedescriptor){
+	TMachineSignalState oldstate;
+
+	if(filename == NULL || filedescriptor == NULL){
+		return VM_STATUS_ERROR_INVALID_PARAMETER;	
+	}	
+	else{
+
+		MachineSuspendSignals(&oldstate);
+		MachineFileOpen(filename, flags, mode,MachineCallBack,(void*)current); //only thing the changes 
+		all[current]->state = VM_THREAD_STATE_WAITING;
+		schedule();
+		*filedescriptor  = all[current]->storeResult;
+		//cout << "hello" << endl;
+		if(*filedescriptor < 0){
+
+			return VM_STATUS_FAILURE;		
+		}
+		else{
+			return VM_STATUS_SUCCESS;	
+		}
+	}
+}
+
+//same one for all of them
+void MachineCallBack(void *calldata, int result){ //current would be garage because the one we wanted gets moved 
+	TMachineSignalState oldstate;
+	MachineSuspendSignals(&oldstate); //suspend any interrupts
+	//cout << "machine call back" << endl;
+	Ready((TVMThreadID)calldata);
+	//cout << "after" << endl;
+	//cout << (TVMThreadID)calldata << "call data value" << endl;
+	all[(TVMThreadID)calldata]->storeResult = result;
+	MachineEnableSignals();
+}
+
+
 //check flow chart
 TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsize, TVMThreadPriority prio, TVMThreadIDRef tid){
 	TMachineSignalState oldstate;
@@ -269,7 +466,7 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	thread->priority = prio;
 	thread->state = VM_THREAD_STATE_DEAD;
 	thread->base = new uint8_t[thread->memsize];
-	//MachineContextCreate(&(thread->context), *Skeleton, thread->params, thread->base, thread->memsize); 		
+	//MachineContextCreate(&(thread->context), Skeleton, thread->params, thread->base, thread->memsize); 		
 	all[thread->id] = thread;//added to map 	
 	//cout << "memsize from app " << memsize << endl;
 	//cout << "check map: " << " prio " << all[*tid]->priority << " memsize " << all[*tid]->memsize << endl;
@@ -277,7 +474,10 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	//need to create context
 	
   	MachineResumeSignals(&oldstate);
-	return VM_STATUS_SUCCESS;
+
+	if((entry != NULL) & (tid != NULL)){return VM_STATUS_SUCCESS;}
+	else{return VM_STATUS_ERROR_INVALID_PARAMETER;}
+	
 	
 }
 
@@ -287,13 +487,17 @@ TVMStatus VMThreadActivate(TVMThreadID thread){
 	//cout << "Activate thread " << thread << endl;
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate); 
-        MachineContextCreate(&(all[thread]->context), *Skeleton, all[thread]->params, all[thread]->base, all[thread]->memsize); 		
+        MachineContextCreate(&(all[thread]->context), Skeleton, all[thread]->params, all[thread]->base, all[thread]->memsize); 		
 	all[thread]->state = VM_THREAD_STATE_READY;
 	//cout << "activated thread: " << thread << " with a state of " << all[thread]->state << endl;   
 	Ready(thread);//put into a ready queue 
-	schedule(); 	
+	//schedule(); 	
 	MachineResumeSignals(&oldstate);
-	return VM_STATUS_SUCCESS;
+
+	if(all[thread]->id == 0) {return VM_STATUS_ERROR_INVALID_ID;}
+	else if(all[thread]->state != VM_THREAD_STATE_DEAD){return VM_STATUS_ERROR_INVALID_STATE;}
+	else{return VM_STATUS_SUCCESS;}
+	
 
 }
 
@@ -310,6 +514,8 @@ TVMStatus VMThreadState(TVMThreadID thread, TVMThreadStateRef stateref)
 		}
 	}
 
-	return(VM_STATUS_SUCCESS);
+	if(all[thread]->id == 0){return VM_STATUS_ERROR_INVALID_ID;}
+	else if(stateref == NULL){return VM_STATUS_ERROR_INVALID_PARAMETER;}
+	else {return VM_STATUS_SUCCESS;}
 }
 
