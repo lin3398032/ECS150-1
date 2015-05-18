@@ -96,10 +96,10 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	
 	TVMMemorySize sharedsize;
 	uint8_t* base = new uint8_t[heapsize]; //creating pointer to the system memory pool
-	memPool *sysMem = new memPool(base, heapsize);
-	sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
-	allMem[VM_MEMORY_POOL_ID_SYSTEM] = sysMem; //create and push main system memory?
-	//VMMemoryPoolCreate(base, heapsize, )   //creating the system memory pool
+	//memPool *sysMem;// = new memPool(base, heapsize);
+	//sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
+	//allMem[VM_MEMORY_POOL_ID_SYSTEM] = sysMem; //create and push main system memory?
+	VMMemoryPoolCreate(base, heapsize, VM_MEMORY_POOL_ID_SYSTEM);   //creating the system memory pool
 	tcb* primary = new tcb;
 	primary->id = all.size(); 
 	primary->priority = VM_THREAD_PRIORITY_NORMAL;
@@ -139,7 +139,7 @@ TVMStatus VMMemoryPoolDeallocate(TVMMemoryPoolID memory, void *pointer){
 	//pointer is the base of the memory block
 	//if allocated then deallocate
 	list<memBlock>::iterator itr = allMem[memory]->space.begin();
-	for( ; itr != allMem[memory]->space.end(); itr++){
+	for( ; itr != allMem[memory]->space.end(); ){
 		list<memBlock>::iterator prev = itr--;
 		list<memBlock>::iterator next = itr++;  
 		//found allocated space 
@@ -151,12 +151,18 @@ TVMStatus VMMemoryPoolDeallocate(TVMMemoryPoolID memory, void *pointer){
 				allMem[memory]->space.erase(itr); //erase the block of memory 
 							 
 							
-			} //check for itr undefined
+			}//not check if block next to it is free 
 			if(next->free == true)					
 			{
 			//merge
+				TVMMemorySize buffer = itr->size; 
+				next->size += buffer; //give it the allocated size  
+				allMem[memory]->space.erase(itr); //erase the block of memory 
 			
-			}
+			} else {
+				
+				itr++;	
+				}
 	 	}
 
 	}  
@@ -237,11 +243,6 @@ TVMStatus VMMemoryPoolCreate(void *base, TVMMemorySize size, TVMMemoryPoolIDRef 
 	*memory = allMem.size();
 	allMem[mem->id] = mem; 		
 	return VM_STATUS_SUCCESS;
-	
-
-
-
-
 
 }
 
