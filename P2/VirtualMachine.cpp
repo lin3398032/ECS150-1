@@ -37,15 +37,31 @@ class tcb{
 	
 };
 //this will be attributes of the memory pool
-class mainMP {
+class memBlock{
+	public:
+		uint8_t *base; 
+		TVMMemorySize size;
+};
+class memPool {
 	public:
 	uint8_t *base; 
 	TVMMemorySize size;
+	TVMMemoryPoolID id; 
+	list<memBlock> freeSpace;
+	list<memBlock> allocated; 
+	memPool(uint8_t* addbase,TVMMemorySize msize); 	
 };
+memPool::memPool(uint8_t* addbase,TVMMemorySize  msize){
+	base = addbase;
+	size = msize;
+	memBlock init; 
+	init.base = addbase; 
+	init.size = msize;  
+	freeSpace.push_back(init);
+
+}
 //create list for allocated space and free space
-list<mainMP> freeSpace; //
-list<mainMP> allocatedSpace; //
-vector<mainMP> allMem;
+vector<TVMMemoryPoolID> allMem;
 TVMThreadID current; // ptr to the current thread
 TVMThreadID idle; //idle thread 
 map<TVMThreadID, tcb*> all;
@@ -76,12 +92,12 @@ void schedule(void);
 
 TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 {
-	mainMP sysMem;
+	
 	TVMMemorySize sharedsize;
 	uint8_t* base = new uint8_t[heapsize]; //creating pointer to the system memory pool
-	sysMem.base = base;
-	sysMem.size = heapsize;
-	allMem.push_back(sysMem); //create and push main system memory?
+	memPool sysMem(base, heapsize);
+	sysMem.id = VM_MEMORY_POOL_ID_SYSTEM; 
+	allMem.push_back(sysMem.id); //create and push main system memory?
 	//VMMemoryPoolCreate(base, heapsize, )   //creating the system memory pool
 	tcb* primary = new tcb;
 	primary->id = all.size(); 
