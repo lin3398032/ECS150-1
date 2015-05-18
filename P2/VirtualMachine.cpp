@@ -57,11 +57,11 @@ memPool::memPool(uint8_t* addbase,TVMMemorySize  msize){
 	memBlock init; 
 	init.base = addbase; 
 	init.size = msize;  
-	freeSpace.push_back(init);
+	freeSpace.push_back(init); //push back first space of freed memory 
 
 }
 //create list for allocated space and free space
-vector<TVMMemoryPoolID> allMem;
+map<TVMMemoryPoolID, memPool*> allMem;
 TVMThreadID current; // ptr to the current thread
 TVMThreadID idle; //idle thread 
 map<TVMThreadID, tcb*> all;
@@ -95,9 +95,9 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	
 	TVMMemorySize sharedsize;
 	uint8_t* base = new uint8_t[heapsize]; //creating pointer to the system memory pool
-	memPool sysMem(base, heapsize);
-	sysMem.id = VM_MEMORY_POOL_ID_SYSTEM; 
-	allMem.push_back(sysMem.id); //create and push main system memory?
+	memPool *sysMem = new memPool(base, heapsize);
+	sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
+	allMem[VM_MEMORY_POOL_ID_SYSTEM] = sysMem; //create and push main system memory?
 	//VMMemoryPoolCreate(base, heapsize, )   //creating the system memory pool
 	tcb* primary = new tcb;
 	primary->id = all.size(); 
@@ -133,6 +133,22 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 		return(VM_STATUS_SUCCESS);
 	}
 }
+
+TVMStatus VMMemoryPoolQuery(TVMMemoryPoolID memory, TVMMemorySizeRef bytesleft){
+	
+	list<memBlock>::iterator itr; 
+	itr = allMem[memory]->freeSpace.begin(); 
+	while((itr != allMem[memory]->freeSpace.end())){
+		
+		cout << itr->size << endl;
+		
+
+	}
+
+	
+	return VM_STATUS_SUCCESS;
+
+}
 //first step to initialize memory pool
 //allocated_size = (size + 63) & (~63);
 
@@ -165,9 +181,17 @@ TVMStatus VMMemoryPoolCreate(void *base, TVMMemorySize size, TVMMemoryPoolIDRef 
 	if(base == NULL || memory == NULL || size == 0){
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	}
-	else{
-		return VM_STATUS_SUCCESS;
-	}
+	
+
+	memPool *mem = new memPool((uint8_t*)base, size);
+	mem->id = allMem.size();
+	*memory = allMem.size();
+	allMem[mem->id] = mem; 		
+	return VM_STATUS_SUCCESS;
+	
+
+
+
 
 
 }
