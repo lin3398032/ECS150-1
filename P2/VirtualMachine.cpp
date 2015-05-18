@@ -140,14 +140,22 @@ TVMStatus VMMemoryPoolDeallocate(TVMMemoryPoolID memory, void *pointer){
 	//if allocated then deallocate
 	list<memBlock>::iterator itr = allMem[memory]->space.begin();
 	for( ; itr != allMem[memory]->space.end(); itr++){
+		list<memBlock>::iterator prev = itr--;
+		list<memBlock>::iterator next = itr++;  
 		//found allocated space 
 		if(itr->base == (uint8_t*)pointer && itr->free == false){
-			if((itr--)->free == true){
+			if(prev->free == true){
 			//merge
+				TVMMemorySize buffer = itr->size; 
+				prev->size += buffer; //give it the allocated size  
+				allMem[memory]->space.erase(itr); //erase the block of memory 
+							 
+							
 			} //check for itr undefined
-			if((itr++)->free == true)					
+			if(next->free == true)					
 			{
 			//merge
+			
 			}
 	 	}
 
