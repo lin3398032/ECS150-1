@@ -41,14 +41,14 @@ class memBlock{
 	public:
 		uint8_t *base; 
 		TVMMemorySize size;
+		bool free; 
 };
 class memPool {
 	public:
 	uint8_t *base; 
 	TVMMemorySize size;
 	TVMMemoryPoolID id; 
-	list<memBlock> freeSpace;
-	list<memBlock> allocated; 
+	list<memBlock> space;
 	memPool(uint8_t* addbase,TVMMemorySize msize); 	
 };
 memPool::memPool(uint8_t* addbase,TVMMemorySize  msize){
@@ -166,15 +166,15 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 	if(pointer == NULL || size == 0 || memory < 0){
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	}
-	else if (size > heapsize){
+	if (size > allMem[memory]->size){
 		return VM_STATUS_ERROR_INSUFFICIENT_RESOURCES;
 	}
-
-	else{
+		memBlock m = new memBlock; 
+			
+	
 		allocatedSize = (size + 63) & (~63); //rounds up size to next multiple 64 byte
-		*pointer = &(allocatedSize); //assigned allocate size to pointer
+		*pointer = m->base; //assigned allocate size to pointer
 		return VM_STATUS_SUCCESS;
-	}
 
 
 }
