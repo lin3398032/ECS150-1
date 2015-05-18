@@ -56,8 +56,9 @@ memPool::memPool(uint8_t* addbase,TVMMemorySize  msize){
 	size = msize;
 	memBlock init; 
 	init.base = addbase; 
-	init.size = msize;  
-	freeSpace.push_back(init); //push back first space of freed memory 
+	init.size = msize; 
+	init.free = true;  
+	space.push_back(init); //push back first space of freed memory 
 
 }
 //create list for allocated space and free space
@@ -134,15 +135,35 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	}
 }
 
+TVMStatus VMMemoryPoolDeallocate(TVMMemoryPoolID memory, void *pointer){
+	//pointer is the base of the memory block
+	//if allocated then deallocate
+	list<memBlock>::iterator itr = allMem[memory]->space.begin();
+	for( ; itr != allMem[memory]->space.end(); itr++){
+		//found allocated space 
+		if(itr->base == (uint8_t*)pointer && itr->free == false){
+			if((itr--)->free == true){
+			//merge
+			} //check for itr undefined
+			if((itr++)->free == true)					
+			{
+			//merge
+			}
+	 	}
+
+	}  
+
+} 
 TVMStatus VMMemoryPoolQuery(TVMMemoryPoolID memory, TVMMemorySizeRef bytesleft){
 	
 	TVMMemorySize bytes = 0; 	
 	list<memBlock>::iterator itr; 
-	itr = allMem[memory]->freeSpace.begin(); 
-	while((itr != allMem[memory]->freeSpace.end())){
-		
-	 bytes +=  itr->size;
- 	  itr++;	
+	itr = allMem[memory]->space.begin(); 
+	while((itr != allMem[memory]->space.end())){
+	
+		if(itr->free == true)	
+		 	bytes +=  itr->size;
+ 	  	itr++;	
 
 	}
 	*bytesleft = bytes; 
@@ -162,20 +183,38 @@ TVMStatus VMMemoryPoolQuery(TVMMemoryPoolID memory, TVMMemorySizeRef bytesleft){
 //if |Allocated|Free(1)|Free(2)|Allocated|Free|Free| need to merge Free(1) and Free(2) to make it one big free
 //all should be done in VMMemoryPoolAllocate!
 TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void **pointer){
-	unsigned int allocatedSize = 0;
+	unsigned int allocated = (size + 63) & (~63); //rounds up to the next 64 bytes
 	if(pointer == NULL || size == 0 || memory < 0){
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	}
 	if (size > allMem[memory]->size){
 		return VM_STATUS_ERROR_INSUFFICIENT_RESOURCES;
 	}
-		memBlock m = new memBlock; 
-			
-	
-		allocatedSize = (size + 63) & (~63); //rounds up size to next multiple 64 byte
-		*pointer = m->base; //assigned allocate size to pointer
-		return VM_STATUS_SUCCESS;
+	list<memBlock>::iterator itr = allMem[memory]->space.begin(); 
+	for(; itr != allMem[memory]->space.end(); itr++ ){
+		
+		if(itr->free == true){
+			//if free block is larger than allocated
+			if(itr->size > allocated){
+				uint8_t* oldbase = itr->base;
+				itr->size = itr->size - allocated;
+				itr->base = itr->base + allocated;
+				memBlock *m = new memBlock;
+				m->free = false; 
+				m->size = allocated; 
+				m->base = oldbase; 
+				allMem[memory]->space.push_back(*m);    
+				*pointer = m->base; //assigned allocate size to pointer
+				return VM_STATUS_SUCCESS;
+			} else {
+				//should be checking for other free allocated blocks if any
+				return(VM_STATUS_ERROR_INSUFFICIENT_RESOURCES);
+			}
+ 
 
+		}
+
+	}
 
 }
 
