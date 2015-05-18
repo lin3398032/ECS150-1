@@ -136,14 +136,16 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 
 TVMStatus VMMemoryPoolQuery(TVMMemoryPoolID memory, TVMMemorySizeRef bytesleft){
 	
+	TVMMemorySize bytes = 0; 	
 	list<memBlock>::iterator itr; 
 	itr = allMem[memory]->freeSpace.begin(); 
 	while((itr != allMem[memory]->freeSpace.end())){
 		
-		cout << itr->size << endl;
-		
+	 bytes +=  itr->size;
+ 	  itr++;	
 
 	}
+	*bytesleft = bytes; 
 
 	
 	return VM_STATUS_SUCCESS;
