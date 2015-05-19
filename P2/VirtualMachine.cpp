@@ -19,7 +19,7 @@ extern "C"{
 	void MachineInitialize(int timeout);
 	void MachineRequestAlarm(useconds_t usec, TMachineAlarmCallback callback, void *calldata);
 	void MachineEnableSignals(void);
-	const TVMMemoryPoolID VM_MEMORY_POOL_ID_SYSTEM;
+	const TVMMemoryPoolID VM_MEMORY_POOL_ID_SYSTEM = 0;
 }
 class tcb{
 	public: 
@@ -55,11 +55,12 @@ memPool::memPool(uint8_t* addbase,TVMMemorySize  msize){
 	base = addbase;
 	size = msize;
 	memBlock init; 
-	init.base = addbase; 
+	init.base = addbase;
+	cout << "memPool being made with \t" << msize << "size of available memory" << endl;  
 	init.size = msize; 
 	init.free = true;  
 	space.push_back(init); //push back first space of freed memory 
-
+	cout << "Memory Pool Created with " << space.size() << "memBlocks" << endl;
 }
 //create list for allocated space and free space
 map<TVMMemoryPoolID, memPool*> allMem;
@@ -94,12 +95,19 @@ void schedule(void);
 TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 {
 	
+
 	TVMMemorySize sharedsize;
+	TVMMemoryPoolIDRef memory;
+	heapsize =1000000000;
 	uint8_t* base = new uint8_t[heapsize]; //creating pointer to the system memory pool
-	//memPool *sysMem = new memPool(base, heapsize);
-	//sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
-	//allMem[VM_MEMORY_POOL_ID_SYSTEM] = sysMem; //create and push main system memory?
-	VMMemoryPoolCreate(base, heapsize, VM_MEMORY_POOL_ID_SYSTEM);   //creating the system memory pool
+	memPool *sysMem = new memPool(base, heapsize);
+	sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
+	allMem[VM_MEMORY_POOL_ID_SYSTEM] = sysMem;
+	cout << "number of memBlocks in sysMem " << sysMem->space.size() << endl;
+	 //create and push main system memory?
+	//cout << "Creating memory system pool with id:\t" << allMem.size() << endl;  
+	//VMMemoryPoolCreate(base, heapsize, memory);   //creating the system memory pool
+	//cout << "total mempools\t" << allMem.size() << endl;
 	tcb* primary = new tcb;
 	primary->id = all.size(); 
 	primary->priority = VM_THREAD_PRIORITY_NORMAL;
@@ -201,24 +209,26 @@ TVMStatus VMMemoryPoolQuery(TVMMemoryPoolID memory, TVMMemorySizeRef bytesleft){
 TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void **pointer){
 	unsigned int allocated = (size + 63) & (~63); //rounds up to the next 64 bytes
 	//if memory not in allMem
-	cout << "before for loop" << endl;
-	cout << "memory\t" << memory << endl; 
-	cout << "size of allMem\t" <<  allMem.size() << endl;
-	cout << "allMem[memory]->space.size()" << allMem[memory]->space.size() << endl;
-	if(memory < allMem.size() || memory > allMem.size()){
+	cout << "memory id:\t" << memory << endl;
+	cout << "memory size \t" << size << endl; 
+	cout << "size of allMem should be 1 for thread.so, actual size: \t" <<  allMem.size() << endl;
+	cout << "allMem[memory]->space.size()" << allMem[memory]->id << endl;
+	if(memory > allMem.size()){
+		cout << "allocation fail memory id invalid" << endl;
 		return(VM_STATUS_ERROR_INVALID_PARAMETER);
 	}
-	if(pointer == NULL || size == 0 || memory < 0){
+	if( pointer == NULL || size == 0 || memory < 0){ //pointer should be an address that we will init doesnt matter if NULL i believe 
+		cout << "allocation fail one of the parameters is invalid" << endl;
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
-	}
-	if (size > allMem[memory]->size){
-		return VM_STATUS_ERROR_INSUFFICIENT_RESOURCES;
 	}
 	list<memBlock>::iterator itr;
 	cout << "allocating memBlock" << endl;
 	for(itr = allMem[memory]->space.begin(); itr != allMem[memory]->space.end(); itr++ ){
 		cout << "in for loop" << endl;	
 		if(itr->free == true){
+			cout << "free block found" << endl;
+			cout << "space in block\t" << itr->size << endl;
+			cout << "size to be allocated\t" << allocated << endl;
 			//if free block is larger than allocated
 			if(itr->size > allocated){
 				uint8_t* oldbase = itr->base;
@@ -230,10 +240,12 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 				m->base = oldbase; 
 				allMem[memory]->space.push_back(*m);    
 				*pointer = m->base; //assigned allocate size to pointer
-				cout << "memory allocated" << endl;
+				cout << "base \t" << *pointer << endl;
+				cout << "!!!!!!!!!!!!!!!memory allocated!!!!!!!!!!!!!!!!!!" << endl;
 				return VM_STATUS_SUCCESS;
 			} else {
 				//should be checking for other free allocated blocks if any
+				cout << "memory was not allocated" << endl;
 				return(VM_STATUS_ERROR_INSUFFICIENT_RESOURCES);
 			}
  
@@ -244,16 +256,19 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 }
 
 TVMStatus VMMemoryPoolCreate(void *base, TVMMemorySize size, TVMMemoryPoolIDRef memory){
-	if(base == NULL || memory == NULL || size == 0){
+	if(!high.empty() && high.front()->id != current && (high.front())->state != VM_THREAD_STATE_WAITING && (high.front())->state != VM_THREAD_STATE_DEAD){
+	if(base == NULL || size == 0){
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	}
 	cout << "creating pool with ID " << allMem.size() << endl;
+	memPool *mem = new memPool((uint8_t*)base, size);
 	*memory = allMem.size();
 	mem->id = allMem.size();
-	allMem[mem->id] = mem; 		
-	memPool *mem = new memPool((uint8_t*)base, size);
+	allMem[mem->id] = mem;// put into mapping  	
+	cout << "Pool Created with id\t" << mem->id << endl;	
 	return VM_STATUS_SUCCESS;
 
+	}
 }
 
 void idleFun(void*){ while(1){} }
@@ -398,10 +413,11 @@ TVMStatus VMThreadDelete(TVMThreadID thread){
 
 }
 void Skeleton(void* params){
+	cout << "entering skeleton" << endl;
 	MachineEnableSignals(); 
 	all[current]->entry(all[current]->params);
 	VMTerminate(all[current]->id);
-	//cout << "end of skeleton" << endl;
+	cout << "end of skeleton" << endl;
 }  
 void AlarmCallback(void *param){
 	vector<tcb*>::iterator itr;
@@ -430,7 +446,8 @@ TVMStatus VMThreadSleep(TVMTick tick){
 	all[current]->ticks = tick;//possibly have to multiply by 1000
 	all[current]->state = VM_THREAD_STATE_WAITING;
 	sleeping.push_back(all[current]); //a function that looks through threads and adds them to the sleep queue
-	schedule();//cout << "put thread  " << current << " to sleep with " << all[current]->ticks << " ticks"<< endl;
+	schedule();
+	cout << "put thread  " << current << " to sleep with " << all[current]->ticks << " ticks"<< endl;
 	//MachineResumeSignals(&oldstate);
 	return(VM_STATUS_SUCCESS);
 }
@@ -572,9 +589,9 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	thread->state = VM_THREAD_STATE_DEAD;
 	//thread->base = new uint8_t[thread->memsize];
 	all[thread->id] = thread;//added to map 	
-	//cout << "memsize from app " << memsize << endl;
-	//cout << "check map: " << " prio " << all[*tid]->priority << " memsize " << all[*tid]->memsize << endl;
-	//cout << "thread created "<< all[*tid]->id << " returning tid " << *tid  << " from  "  <<  thread->id  << " with thread state " << all[*tid]->state << endl;
+	cout << "memsize from app " << memsize << endl;
+	cout << "check map: " << " prio " << all[*tid]->priority << " memsize " << all[*tid]->memsize << endl;
+	cout << "thread created "<< all[*tid]->id << " returning tid " << *tid  << " from  "  <<  thread->id  << " with thread state " << all[*tid]->state << endl;
 	//need to create context
 	
   	MachineResumeSignals(&oldstate);
@@ -588,20 +605,20 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 TVMStatus VMThreadActivate(TVMThreadID thread){
 	//need to handle high priority 
 	//need to check and see if its dead first
-	//cout << "Activate thread " << thread << endl;
+	cout << "Activate thread " << thread << endl;
 	TMachineSignalState oldstate;
-	MachineSuspendSignals(&oldstate); 
+	MachineSuspendSignals(&oldstate);
+	cout << "creating context" << endl; 
         MachineContextCreate(&(all[thread]->context), Skeleton, all[thread]->params, all[thread]->base, all[thread]->memsize); 		
 	all[thread]->state = VM_THREAD_STATE_READY;
-	//cout << "activated thread: " << thread << " with a state of " << all[thread]->state << endl;   
+	cout << "activated thread: " << thread << " with a state of " << all[thread]->state << endl;   
 	Ready(thread);//put into a ready queue 
 	//schedule(); 	
 	MachineResumeSignals(&oldstate);
 
 	if(all[thread]->id == 0) {return VM_STATUS_ERROR_INVALID_ID;}
 	else if(all[thread]->state != VM_THREAD_STATE_DEAD){return VM_STATUS_ERROR_INVALID_STATE;}
-	else{return VM_STATUS_SUCCESS;}
-	
+	else{return VM_STATUS_SUCCESS;}	
 
 }
 
