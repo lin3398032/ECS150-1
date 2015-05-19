@@ -96,10 +96,12 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	
 	TVMMemorySize sharedsize;
 	uint8_t* base = new uint8_t[heapsize]; //creating pointer to the system memory pool
-	//memPool *sysMem;// = new memPool(base, heapsize);
-	//sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
-	//allMem[VM_MEMORY_POOL_ID_SYSTEM] = sysMem; //create and push main system memory?
-	VMMemoryPoolCreate(base, heapsize, VM_MEMORY_POOL_ID_SYSTEM);   //creating the system memory pool
+	memPool *sysMem = new memPool(base, heapsize);
+	sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
+	//sysMem.size = heapsize;
+	//sysMem.base = base;
+	allMem[VM_MEMORY_POOL_ID_SYSTEM] = sysMem; //create and push main system memory?
+	//VMMemoryPoolCreate(base, heapsize, VM_MEMORY_POOL_ID_SYSTEM);   //creating the system memory pool
 	tcb* primary = new tcb;
 	primary->id = all.size(); 
 	primary->priority = VM_THREAD_PRIORITY_NORMAL;
@@ -204,6 +206,7 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 	cout << "before for loop" << endl;
 	cout << "memory\t" << memory << endl; 
 	cout << "size of allMem\t" <<  allMem.size() << endl;
+	cout << "allMem[memory]->space.size()" << allMem[memory]->space.size() << endl;
 	if(memory < allMem.size() || memory > allMem.size()){
 		return(VM_STATUS_ERROR_INVALID_PARAMETER);
 	}
@@ -214,8 +217,9 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 		return VM_STATUS_ERROR_INSUFFICIENT_RESOURCES;
 	}
 	list<memBlock>::iterator itr;
+	cout << "allocating memBlock" << endl;
 	for(itr = allMem[memory]->space.begin(); itr != allMem[memory]->space.end(); itr++ ){
-		
+		cout << "in for loop" << endl;	
 		if(itr->free == true){
 			//if free block is larger than allocated
 			if(itr->size > allocated){
@@ -239,7 +243,6 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 		}
 
 	}
-	return(VM_STATUS_SUCCESS);
 }
 
 TVMStatus VMMemoryPoolCreate(void *base, TVMMemorySize size, TVMMemoryPoolIDRef memory){
@@ -247,7 +250,7 @@ TVMStatus VMMemoryPoolCreate(void *base, TVMMemorySize size, TVMMemoryPoolIDRef 
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	}
 	
-
+	cout << "creating pool with ID " << allMem.size() << endl;
 	memPool *mem = new memPool((uint8_t*)base, size);
 	mem->id = allMem.size();
 	*memory = allMem.size();
@@ -565,7 +568,7 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	thread->entry  = entry;
 	thread->params = param;
 	cout << "hi!" << endl;
-	TVMStatus a =  VMMemoryPoolAllocate(VM_MEMORY_POOL_ID_SYSTEM, memsize, &thread->base);
+	VMMemoryPoolAllocate(VM_MEMORY_POOL_ID_SYSTEM, memsize, &thread->base);
 	cout << "bye" <<endl;
 	thread->memsize = memsize;
 	thread->priority = prio;
