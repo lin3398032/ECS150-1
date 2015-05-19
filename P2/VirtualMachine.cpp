@@ -19,7 +19,7 @@ extern "C"{
 	void MachineInitialize(int timeout);
 	void MachineRequestAlarm(useconds_t usec, TMachineAlarmCallback callback, void *calldata);
 	void MachineEnableSignals(void);
-	const TVMMemoryPoolID VM_MEMORY_POOL_ID_SYSTEM = 0;
+	const TVMMemoryPoolID VM_MEMORY_POOL_ID_SYSTEM;
 }
 class tcb{
 	public: 
@@ -96,12 +96,10 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	
 	TVMMemorySize sharedsize;
 	uint8_t* base = new uint8_t[heapsize]; //creating pointer to the system memory pool
-	memPool *sysMem = new memPool(base, heapsize);
-	sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
-	//sysMem.size = heapsize;
-	//sysMem.base = base;
-	allMem[VM_MEMORY_POOL_ID_SYSTEM] = sysMem; //create and push main system memory?
-	//VMMemoryPoolCreate(base, heapsize, VM_MEMORY_POOL_ID_SYSTEM);   //creating the system memory pool
+	//memPool *sysMem = new memPool(base, heapsize);
+	//sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
+	//allMem[VM_MEMORY_POOL_ID_SYSTEM] = sysMem; //create and push main system memory?
+	VMMemoryPoolCreate(base, heapsize, VM_MEMORY_POOL_ID_SYSTEM);   //creating the system memory pool
 	tcb* primary = new tcb;
 	primary->id = all.size(); 
 	primary->priority = VM_THREAD_PRIORITY_NORMAL;
@@ -249,12 +247,11 @@ TVMStatus VMMemoryPoolCreate(void *base, TVMMemorySize size, TVMMemoryPoolIDRef 
 	if(base == NULL || memory == NULL || size == 0){
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	}
-	
 	cout << "creating pool with ID " << allMem.size() << endl;
-	memPool *mem = new memPool((uint8_t*)base, size);
-	mem->id = allMem.size();
 	*memory = allMem.size();
+	mem->id = allMem.size();
 	allMem[mem->id] = mem; 		
+	memPool *mem = new memPool((uint8_t*)base, size);
 	return VM_STATUS_SUCCESS;
 
 }
@@ -567,10 +564,10 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	thread->id = all.size();
 	thread->entry  = entry;
 	thread->params = param;
-	cout << "hi!" << endl;
-	VMMemoryPoolAllocate(VM_MEMORY_POOL_ID_SYSTEM, memsize, &thread->base);
-	cout << "bye" <<endl;
 	thread->memsize = memsize;
+	cout << "Allocating Thread Stack" << endl;
+	VMMemoryPoolAllocate(VM_MEMORY_POOL_ID_SYSTEM, thread->memsize, &thread->base);
+	cout << "Thread Stack Allocated" <<endl;
 	thread->priority = prio;
 	thread->state = VM_THREAD_STATE_DEAD;
 	//thread->base = new uint8_t[thread->memsize];
