@@ -149,6 +149,7 @@ TVMStatus VMMemoryPoolDeallocate(TVMMemoryPoolID memory, void *pointer){
 				TVMMemorySize buffer = itr->size; 
 				prev->size += buffer; //give it the allocated size  
 				allMem[memory]->space.erase(itr); //erase the block of memory 
+				return VM_STATUS_SUCCESS;
 							 
 							
 			}//not check if block next to it is free 
@@ -158,6 +159,7 @@ TVMStatus VMMemoryPoolDeallocate(TVMMemoryPoolID memory, void *pointer){
 				TVMMemorySize buffer = itr->size; 
 				next->size += buffer; //give it the allocated size  
 				allMem[memory]->space.erase(itr); //erase the block of memory 
+				return VM_STATUS_SUCCESS;
 			
 			} else {
 				
@@ -198,14 +200,21 @@ TVMStatus VMMemoryPoolQuery(TVMMemoryPoolID memory, TVMMemorySizeRef bytesleft){
 //all should be done in VMMemoryPoolAllocate!
 TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void **pointer){
 	unsigned int allocated = (size + 63) & (~63); //rounds up to the next 64 bytes
+	//if memory not in allMem
+	cout << "before for loop" << endl;
+	cout << "memory\t" << memory << endl; 
+	cout << "size of allMem\t" <<  allMem.size() << endl;
+	if(memory < allMem.size() || memory > allMem.size()){
+		return(VM_STATUS_ERROR_INVALID_PARAMETER);
+	}
 	if(pointer == NULL || size == 0 || memory < 0){
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	}
 	if (size > allMem[memory]->size){
 		return VM_STATUS_ERROR_INSUFFICIENT_RESOURCES;
 	}
-	list<memBlock>::iterator itr = allMem[memory]->space.begin(); 
-	for(; itr != allMem[memory]->space.end(); itr++ ){
+	list<memBlock>::iterator itr;
+	for(itr = allMem[memory]->space.begin(); itr != allMem[memory]->space.end(); itr++ ){
 		
 		if(itr->free == true){
 			//if free block is larger than allocated
@@ -219,6 +228,7 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 				m->base = oldbase; 
 				allMem[memory]->space.push_back(*m);    
 				*pointer = m->base; //assigned allocate size to pointer
+				cout << "memory allocated" << endl;
 				return VM_STATUS_SUCCESS;
 			} else {
 				//should be checking for other free allocated blocks if any
@@ -229,7 +239,7 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 		}
 
 	}
-
+	return(VM_STATUS_SUCCESS);
 }
 
 TVMStatus VMMemoryPoolCreate(void *base, TVMMemorySize size, TVMMemoryPoolIDRef memory){
@@ -554,11 +564,13 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	thread->id = all.size();
 	thread->entry  = entry;
 	thread->params = param;
+	cout << "hi!" << endl;
+	TVMStatus a =  VMMemoryPoolAllocate(VM_MEMORY_POOL_ID_SYSTEM, memsize, &thread->base);
+	cout << "bye" <<endl;
 	thread->memsize = memsize;
 	thread->priority = prio;
 	thread->state = VM_THREAD_STATE_DEAD;
-	thread->base = new uint8_t[thread->memsize];
-	//MachineContextCreate(&(thread->context), Skeleton, thread->params, thread->base, thread->memsize); 		
+	//thread->base = new uint8_t[thread->memsize];
 	all[thread->id] = thread;//added to map 	
 	//cout << "memsize from app " << memsize << endl;
 	//cout << "check map: " << " prio " << all[*tid]->priority << " memsize " << all[*tid]->memsize << endl;
