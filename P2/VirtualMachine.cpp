@@ -98,7 +98,7 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 
 	TVMMemorySize sharedsize;
 	TVMMemoryPoolIDRef memory;
-	heapsize =1000000000;
+	heapsize =10000000;
 	uint8_t* base = new uint8_t[heapsize]; //creating pointer to the system memory pool
 	memPool *sysMem = new memPool(base, heapsize);
 	sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
