@@ -16,7 +16,7 @@ extern "C"{
 	TVMMainEntry VMLoadModule(const char *module);
 	TVMStatus VMFilePrint(int filedescriptor, const char *format, ...);
 	TVMStatus VMThreadSleep(TVMTick tick);
-	void MachineInitialize(int timeout);
+	void *MachineInitialize(int timeout, size_t sharedsize);
 	void MachineRequestAlarm(useconds_t usec, TMachineAlarmCallback callback, void *calldata);
 	void MachineEnableSignals(void);
 	const TVMMemoryPoolID VM_MEMORY_POOL_ID_SYSTEM = 0;
@@ -92,11 +92,11 @@ void AlarmCallback(void *params);
 void schedule(void);
 //will go through queues and run the thread with highest priority
 
-TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
+TVMStatus VMStart(int tickms, TVMMemorySize heapsize, int machinetickms, TVMMemorySize sharedsize, int argc, char *argv[])
 {
 	
 
-	TVMMemorySize sharedsize;
+//	TVMMemorySize sharedsize;
 	TVMMemoryPoolIDRef memory;
 	heapsize =10000000;
 	uint8_t* base = new uint8_t[heapsize]; //creating pointer to the system memory pool
@@ -127,7 +127,9 @@ TVMStatus VMStart(int tickms, int machinetickms, int argc, char *argv[])
 	all[tidle->id] = (tidle);
 	idle = tidle->id;
 	//cout << "idle is " << idle << endl; 
-	MachineInitialize(machinetickms);
+	void *sharedAdd = MachineInitialize(machinetickms, (size_t)sharedsize);
+
+	memPool *sharedMem = new memPool((uint8_t*)sharedAdd, (TVMMemorySize) sharedsize);
 	MachineRequestAlarm(machinetickms*1000, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
         MachineEnableSignals();
 
