@@ -218,7 +218,7 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 	unsigned int allocated = (size + 0x3F) & (~0x3F); //rounds up to the next 64 bytes
 	//if memory not in allMem
 	//cout << "memory id:\t" << memory << endl;
-	cout << "allocate memory of  size \t" << size << endl; 
+	//cout << "allocate memory of  size \t" << size << endl; 
 	//cout << "size of allMem should be 1 for thread.so, actual size: \t" <<  allMem.size() << endl;
 	//cout << "allMem[memory]->space.size()" << allMem[memory]->id << endl;
 	if(memory > allMem.size()){
@@ -230,7 +230,7 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	}
 	list<memBlock>::iterator itr;
-	cout << "allocating memBlock" << endl;
+	//cout << "allocating memBlock" << endl;
 	for(itr = allMem[memory]->space.begin(); itr != allMem[memory]->space.end(); itr++ ){
 		//cout << "in for loop" << endl;	
 		if(itr->free == true){
@@ -248,12 +248,12 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 				m->base = oldbase; 
 				allMem[memory]->space.push_back(*m);    
 				*pointer = m->base; //assigned allocate size to pointer
-				cout << "base \t" << *pointer << endl;
+				//cout << "base \t" << *pointer << endl;
 				//cout << "!!!!!!!!!!!!!!!memory allocated!!!!!!!!!!!!!!!!!!" << endl;
 				return VM_STATUS_SUCCESS;
 			} else {
 				//should be checking for other free allocated blocks if any
-				cout << "memory was not allocated" << endl;
+				//cout << "memory was not allocated" << endl;
 				return(VM_STATUS_ERROR_INSUFFICIENT_RESOURCES);
 			}
  
@@ -268,12 +268,12 @@ TVMStatus VMMemoryPoolCreate(void *base, TVMMemorySize size, TVMMemoryPoolIDRef 
 	if(base == NULL || size == 0){
 		return VM_STATUS_ERROR_INVALID_PARAMETER;
 	}
-	cout << "creating pool with ID " << allMem.size() << endl;
+	//cout << "creating pool with ID " << allMem.size() << endl;
 	memPool *mem = new memPool((uint8_t*)base, size);
 	*memory = allMem.size();
 	mem->id = allMem.size();
 	allMem[mem->id] = mem;// put into mapping  	
-	cout << "Pool Created with id\t" << mem->id << endl;	
+	//cout << "Pool Created with id\t" << mem->id << endl;	
 	return VM_STATUS_SUCCESS;
 
 	}
@@ -465,12 +465,32 @@ void MachineCallBack(void *calldata, int result);
 
 TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 
-	int bytesToWrite = 0;
+	//int bytesToWrite = 0;
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
-	int temp = *length;
-	int written = 0;
-	void *tempAddr;
+	void* temp; //temporary address to allocated memory inside vmfilewrite
+	if(*length <= 512){
+
+		VMMemoryPoolAllocate(sharedID,(TVMMemorySize)(*length), &temp);
+		MachineFileWrite(filedescriptor, temp, *length, MachineCallBack, (void*)current); //only thing the changes 
+		memcpy(temp, data, (*length)); 
+		all[current]->state = VM_THREAD_STATE_WAITING;
+		schedule();
+
+	} else {
+		int tmplength = *length; 
+		while(tmplength >  0){
+			VMMemoryPoolAllocate(sharedID,(TVMMemorySize)(*length), &temp);
+			MachineFileWrite(filedescriptor, temp, tmplength, MachineCallBack, (void*)current); //only thing the changes 
+			memcpy(temp, data, (*length)); 
+			all[current]->state = VM_THREAD_STATE_WAITING;
+			schedule();
+			tmplength -= 512;
+		}
+	}
+	//int temp = *length;
+	//int written = 0;
+	//void *tempAddr;
 	/*if (*length > 512){
 			bytesToWrite = *length - temp;
 			if(bytesToWrite > 512){bytesToWrite = 512;}
@@ -482,7 +502,9 @@ TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 			cout << "hell234o " << endl;
 		//	cout << "this is length" << *length << endl;
 		}
+*
 */
+/*
 	cout << "starting length " << *length << endl;
 	while(temp > 0){
 	if (*length > 512){
@@ -517,7 +539,9 @@ TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 	//	VMMemoryPoolDeallocate(1,&tempAddr);
 //		cout << "why no here " << endl;
 		MachineResumeSignals(&oldstate);
-		return(VM_STATUS_SUCCESS); 
+		return(VM_STATUS_SUCCESS);
+
+*/ 
 }
 
 TVMStatus VMFileRead(int filedescriptor, void *data, int *length){
