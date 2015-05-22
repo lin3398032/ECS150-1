@@ -21,6 +21,7 @@ extern "C"{
 	void MachineEnableSignals(void);
 	const TVMMemoryPoolID VM_MEMORY_POOL_ID_SYSTEM = 0;
 }
+const TVMMemoryPoolID sharedID = 1; 
 class tcb{
 	public: 
 	TVMThreadPriority priority; 
@@ -97,8 +98,7 @@ TVMStatus VMStart(int tickms, TVMMemorySize heapsize, int machinetickms, TVMMemo
 	
 
 	//TVMMemorySize sharedsize;
-	TVMMemoryPoolIDRef memory;
-	heapsize =10000000;
+	//TVMMemoryPoolIDRef memory;
 	uint8_t* base = new uint8_t[heapsize]; //creating pointer to the system memory pool
 	memPool *sysMem = new memPool(base, heapsize);
 	sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
@@ -128,6 +128,11 @@ TVMStatus VMStart(int tickms, TVMMemorySize heapsize, int machinetickms, TVMMemo
 	idle = tidle->id;
 	//cout << "idle is " << idle << endl; 
 	void* sharedAdd = MachineInitialize(machinetickms, sharedsize);
+	memPool *sMem = new memPool((uint8_t*)sharedAdd, sharedsize);
+	sMem->id = sharedID;
+	allMem[sharedID] = sMem;
+	cout << "number of memBlocks in sysMem " << sysMem->space.size() << endl;
+	//VMMemoryPoolCreate(&sharedAdd, sharedsize, sharedID);
 	MachineRequestAlarm(machinetickms*1000, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
         MachineEnableSignals();
 
