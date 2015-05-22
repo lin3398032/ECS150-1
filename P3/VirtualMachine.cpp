@@ -461,27 +461,42 @@ void MachineCallBack(void *calldata, int result);
 //-1 means file wasn't written to and an error
 
 TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
+
+	int bytesToWrite = 0;
 	TMachineSignalState oldstate;
-	//cout << "This is beginning of VMFileWrite" << endl;
-	//cout << current << "this is current" << endl;
-	if(data == 0 || *length == 0){
-		return VM_STATUS_ERROR_INVALID_PARAMETER;	
-	}	
-	else{
-		MachineSuspendSignals(&oldstate);
-		MachineFileWrite(filedescriptor, data, *length,MachineCallBack,(void*)current); //only thing the changes 
-		all[current]->state = VM_THREAD_STATE_WAITING;
-		schedule();
-		*length = all[current]->storeResult;
-		if(*length < 0){
-			return VM_STATUS_FAILURE;		
+	MachineSuspendSignals(&oldstate);
+	int temp = *length;
+	void *tempAddr;
+	if (*length > 512){
+			bytesToWrite = *length - temp;
+			if(bytesToWrite > 512){bytesToWrite = 512;}
+			VMMemoryPoolAllocate(1,512, &tempAddr);
+
 		}
 		else{
-			return VM_STATUS_SUCCESS;	
+			VMMemoryPoolAllocate(1,(TVMMemorySize)(*length), &tempAddr);
+			cout << "hell234o " << endl;
+		//	cout << "this is length" << *length << endl;
 		}
-	}
 
-	//cout << "THis is the end of VMFILewrite " << endl;
+	while(temp > 0){
+		memcpy (tempAddr, data, bytesToWrite);
+		MachineFileWrite(filedescriptor, tempAddr, *length,MachineCallBack,(void*)current); //only thing the changes 
+
+		all[current]->state = VM_THREAD_STATE_WAITING;
+		schedule();
+		//*length = all[current]->storeResult;
+		temp = temp - 512;
+		//if(temp <= 0){break;}
+		data = (uint8_t *)data + bytesToWrite;
+		cout << "hello " << endl;
+		//cout << "this is temp " << temp << endl;
+		//cout << "BytestoWrite " << bytesToWrite << endl;
+		//cout << "this is data " << data << endl; 
+	}
+	
+		VMMemoryPoolDeallocate(1,&tempAddr);
+		cout << "why no here " << endl;
 }
 
 TVMStatus VMFileRead(int filedescriptor, void *data, int *length){
