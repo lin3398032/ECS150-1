@@ -58,11 +58,11 @@ memPool::memPool(uint8_t* addbase,TVMMemorySize  msize){
 	size = msize;
 	memBlock init; 
 	init.base = addbase;
-	cout << "memPool being made with \t" << msize << "size of available memory" << endl;  
+//	cout << "memPool being made with \t" << msize << "size of available memory" << endl;  
 	init.size = msize; 
 	init.free = true;  
 	space.push_back(init); //push back first space of freed memory 
-	cout << "Memory Pool Created with " << space.size() << "memBlocks" << endl;
+//	cout << "Memory Pool Created with " << space.size() << "memBlocks" << endl;
 }
 //create list for allocated space and free space
 map<TVMMemoryPoolID, memPool*> allMem;
@@ -104,7 +104,7 @@ TVMStatus VMStart(int tickms, TVMMemorySize heapsize, int machinetickms, TVMMemo
 	memPool *sysMem = new memPool(base, heapsize);
 	sysMem->id = VM_MEMORY_POOL_ID_SYSTEM;
 	allMem[VM_MEMORY_POOL_ID_SYSTEM] = sysMem;
-	cout << "number of memBlocks in sysMem " << sysMem->space.size() << endl;
+//	cout << "number of memBlocks in sysMem " << sysMem->space.size() << endl;
 	 //create and push main system memory?
 	//cout << "Creating memory system pool with id:\t" << allMem.size() << endl;  
 	//VMMemoryPoolCreate(base, heapsize, memory);   //creating the system memory pool
@@ -130,10 +130,11 @@ TVMStatus VMStart(int tickms, TVMMemorySize heapsize, int machinetickms, TVMMemo
 	//cout << "idle is " << idle << endl;
 	sharedsize = ((sharedsize + 4095)/4096)*4096; 
 	void* sharedAdd = MachineInitialize(machinetickms, sharedsize);
+	cout << "Shared Address is: " << sharedAdd << endl;
 	memPool *sMem = new memPool((uint8_t*)sharedAdd, sharedsize);
 	sMem->id = sharedID;
 	allMem[sharedID] = sMem;
-	cout << "number of memBlocks in sysMem " << sysMem->space.size() << endl;
+	//cout << "number of memBlocks in sysMem " << sysMem->space.size() << endl;
 	//VMMemoryPoolCreate(&sharedAdd, sharedsize, sharedID);
 	MachineRequestAlarm(machinetickms*1000, AlarmCallback, NULL); //arguments? and alarmCallback being called?	
         MachineEnableSignals();
@@ -216,10 +217,10 @@ TVMStatus VMMemoryPoolQuery(TVMMemoryPoolID memory, TVMMemorySizeRef bytesleft){
 TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void **pointer){
 	unsigned int allocated = (size + 0x3F) & (~0x3F); //rounds up to the next 64 bytes
 	//if memory not in allMem
-	cout << "memory id:\t" << memory << endl;
-	cout << "memory size \t" << size << endl; 
-	cout << "size of allMem should be 1 for thread.so, actual size: \t" <<  allMem.size() << endl;
-	cout << "allMem[memory]->space.size()" << allMem[memory]->id << endl;
+	//cout << "memory id:\t" << memory << endl;
+	cout << "allocate memory of  size \t" << size << endl; 
+	//cout << "size of allMem should be 1 for thread.so, actual size: \t" <<  allMem.size() << endl;
+	//cout << "allMem[memory]->space.size()" << allMem[memory]->id << endl;
 	if(memory > allMem.size()){
 		cout << "allocation fail memory id invalid" << endl;
 		return(VM_STATUS_ERROR_INVALID_PARAMETER);
@@ -231,11 +232,11 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 	list<memBlock>::iterator itr;
 	cout << "allocating memBlock" << endl;
 	for(itr = allMem[memory]->space.begin(); itr != allMem[memory]->space.end(); itr++ ){
-		cout << "in for loop" << endl;	
+		//cout << "in for loop" << endl;	
 		if(itr->free == true){
-			cout << "free block found" << endl;
-			cout << "space in block\t" << itr->size << endl;
-			cout << "size to be allocated\t" << allocated << endl;
+			//cout << "free block found" << endl;
+			//cout << "space in block\t" << itr->size << endl;
+			//cout << "size to be allocated\t" << allocated << endl;
 			//if free block is larger than allocated
 			if(itr->size > allocated){
 				uint8_t* oldbase = itr->base;
@@ -248,7 +249,7 @@ TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void 
 				allMem[memory]->space.push_back(*m);    
 				*pointer = m->base; //assigned allocate size to pointer
 				cout << "base \t" << *pointer << endl;
-				cout << "!!!!!!!!!!!!!!!memory allocated!!!!!!!!!!!!!!!!!!" << endl;
+				//cout << "!!!!!!!!!!!!!!!memory allocated!!!!!!!!!!!!!!!!!!" << endl;
 				return VM_STATUS_SUCCESS;
 			} else {
 				//should be checking for other free allocated blocks if any
@@ -470,7 +471,7 @@ TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 	int temp = *length;
 	int written = 0;
 	void *tempAddr;
-	if (*length > 512){
+	/*if (*length > 512){
 			bytesToWrite = *length - temp;
 			if(bytesToWrite > 512){bytesToWrite = 512;}
 			VMMemoryPoolAllocate(1,512, &tempAddr);
@@ -481,8 +482,23 @@ TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 			cout << "hell234o " << endl;
 		//	cout << "this is length" << *length << endl;
 		}
-
+*/
+	cout << "starting length " << *length << endl;
 	while(temp > 0){
+	if (*length > 512){
+			bytesToWrite = *length - temp;
+			if(bytesToWrite > 512){bytesToWrite = 512;}
+			VMMemoryPoolAllocate(1,512, &tempAddr);
+
+		}
+		else{
+			VMMemoryPoolAllocate(1,(TVMMemorySize)(*length), &tempAddr);
+			//cout << "hell234o " << endl;
+		}
+		cout << "tempAddr:\t" << tempAddr << endl;
+		cout << "data address:\t" << data << endl;
+		cout << "bytes to write:\t" << bytesToWrite << endl;
+		cout << "temp:\t" << temp << endl;
 		memcpy (tempAddr, data, bytesToWrite);
 		MachineFileWrite(filedescriptor, tempAddr, *length,MachineCallBack,(void*)current); //only thing the changes 
 
@@ -493,14 +509,13 @@ TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 		written += all[current]->storeResult;
 		//if(temp <= 0){break;}
 		data = (uint8_t *)data + bytesToWrite;
-		cout << "hello " << endl;
 		//cout << "this is temp " << temp << endl;
 		//cout << "BytestoWrite " << bytesToWrite << endl;
 		//cout << "this is data " << data << endl; 
 	}
 	
 	//	VMMemoryPoolDeallocate(1,&tempAddr);
-		cout << "why no here " << endl;
+//		cout << "why no here " << endl;
 		MachineResumeSignals(&oldstate);
 		return(VM_STATUS_SUCCESS); 
 }
@@ -608,16 +623,16 @@ TVMStatus VMThreadCreate(TVMThreadEntry entry, void *param, TVMMemorySize memsiz
 	thread->entry  = entry;
 	thread->params = param;
 	thread->memsize = memsize;
-	cout << "Allocating Thread Stack" << endl;
+	//cout << "Allocating Thread Stack" << endl;
 	VMMemoryPoolAllocate(VM_MEMORY_POOL_ID_SYSTEM, thread->memsize, &thread->base);
-	cout << "Thread Stack Allocated" <<endl;
+//	cout << "Thread Stack Allocated" <<endl;
 	thread->priority = prio;
 	thread->state = VM_THREAD_STATE_DEAD;
 	//thread->base = new uint8_t[thread->memsize];
 	all[thread->id] = thread;//added to map 	
-	cout << "memsize from app " << memsize << endl;
-	cout << "check map: " << " prio " << all[*tid]->priority << " memsize " << all[*tid]->memsize << endl;
-	cout << "thread created "<< all[*tid]->id << " returning tid " << *tid  << " from  "  <<  thread->id  << " with thread state " << all[*tid]->state << endl;
+//	cout << "memsize from app " << memsize << endl;
+//	cout << "check map: " << " prio " << all[*tid]->priority << " memsize " << all[*tid]->memsize << endl;
+//	cout << "thread created "<< all[*tid]->id << " returning tid " << *tid  << " from  "  <<  thread->id  << " with thread state " << all[*tid]->state << endl;
 	//need to create context
 	
   	MachineResumeSignals(&oldstate);
