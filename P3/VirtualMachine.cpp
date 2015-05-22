@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <vector>
 #include<list>
+#include <cstring>
 #include <map>
 //for testing 
 #include <iostream> 
@@ -126,7 +127,8 @@ TVMStatus VMStart(int tickms, TVMMemorySize heapsize, int machinetickms, TVMMemo
         MachineContextCreate(&(tidle->context), Skeleton, NULL, tidle->base, tidle->memsize); //function is pointer		
 	all[tidle->id] = (tidle);
 	idle = tidle->id;
-	//cout << "idle is " << idle << endl; 
+	//cout << "idle is " << idle << endl;
+	sharedsize = ((sharedsize + 4095)/4096)*4096; 
 	void* sharedAdd = MachineInitialize(machinetickms, sharedsize);
 	memPool *sMem = new memPool((uint8_t*)sharedAdd, sharedsize);
 	sMem->id = sharedID;
@@ -212,7 +214,7 @@ TVMStatus VMMemoryPoolQuery(TVMMemoryPoolID memory, TVMMemorySizeRef bytesleft){
 //if |Allocated|Free(1)|Free(2)|Allocated|Free|Free| need to merge Free(1) and Free(2) to make it one big free
 //all should be done in VMMemoryPoolAllocate!
 TVMStatus VMMemoryPoolAllocate(TVMMemoryPoolID memory, TVMMemorySize size, void **pointer){
-	unsigned int allocated = (size + 63) & (~63); //rounds up to the next 64 bytes
+	unsigned int allocated = (size + 0x3F) & (~0x3F); //rounds up to the next 64 bytes
 	//if memory not in allMem
 	cout << "memory id:\t" << memory << endl;
 	cout << "memory size \t" << size << endl; 
@@ -466,6 +468,7 @@ TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 	TMachineSignalState oldstate;
 	MachineSuspendSignals(&oldstate);
 	int temp = *length;
+	int written = 0;
 	void *tempAddr;
 	if (*length > 512){
 			bytesToWrite = *length - temp;
@@ -487,6 +490,7 @@ TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 		schedule();
 		//*length = all[current]->storeResult;
 		temp = temp - 512;
+		written += all[current]->storeResult;
 		//if(temp <= 0){break;}
 		data = (uint8_t *)data + bytesToWrite;
 		cout << "hello " << endl;
@@ -495,8 +499,10 @@ TVMStatus VMFileWrite(int filedescriptor, void *data, int *length){
 		//cout << "this is data " << data << endl; 
 	}
 	
-		VMMemoryPoolDeallocate(1,&tempAddr);
+	//	VMMemoryPoolDeallocate(1,&tempAddr);
 		cout << "why no here " << endl;
+		MachineResumeSignals(&oldstate);
+		return(VM_STATUS_SUCCESS); 
 }
 
 TVMStatus VMFileRead(int filedescriptor, void *data, int *length){
